@@ -53,14 +53,9 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuClick }) => {
             <Menu />
           </IconButton>
 
-          <Box>
-            <Typography variant="h6" sx={{ color: theme.palette.text.primary, fontWeight: 600 }}>
-              CATS Form 127 Analytics Hub
-            </Typography>
-            <Typography variant="body2" sx={{ color: theme.palette.text.secondary }}>
-              Executive Intelligence Dashboard
-            </Typography>
-          </Box>
+          <Typography variant="h6" sx={{ color: theme.palette.text.primary, fontWeight: 600 }}>
+            CATS Dashboard
+          </Typography>
         </Box>
 
         {/* Center Section - Key Metrics */}

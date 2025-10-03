@@ -42,7 +42,7 @@ const App: React.FC = () => {
 
   return (
     <DataProvider>
-      <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+      <Box sx={{ display: 'flex', minHeight: '100vh', backgroundColor: 'white' }}>
         {/* Sidebar */}
         <Sidebar open={sidebarOpen} onToggle={handleSidebarToggle} />
 
@@ -55,6 +55,7 @@ const App: React.FC = () => {
             flexDirection: 'column',
             marginLeft: sidebarOpen ? '240px' : '80px',
             transition: 'margin-left 0.3s ease',
+            backgroundColor: 'white',
           }}
         >
           {/* Top Navigation */}
