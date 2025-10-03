@@ -190,7 +190,7 @@ def standardize_json_fields(input_file, output_file):
     print(f"Records processed: {len(standardized_data)}")
 
 if __name__ == "__main__":
-    input_file = "/Users/Gary/Dropbox/Unison/Analytics/CATS/data/FULL_Merged.json"
-    output_file = "/Users/Gary/Dropbox/Unison/Analytics/CATS/data/FULL_Merged_standardized.json"
+    input_file = "data/FULL_Merged.json"
+    output_file = "data/FULL_Merged_standardized.json"
 
     standardize_json_fields(input_file, output_file)

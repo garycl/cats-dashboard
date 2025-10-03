@@ -28,3 +28,10 @@ yarn-error.log*
 
 # TypeScript
 *.tsbuildinfo
+
+# Development files
+clean_data.ipynb
+standardize_fields.py
+AGENTS.md
+*.pyc
+__pycache__/
