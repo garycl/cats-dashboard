@@ -53,8 +53,7 @@ const App: React.FC = () => {
             flexGrow: 1,
             display: 'flex',
             flexDirection: 'column',
-            marginLeft: sidebarOpen ? '240px' : '80px',
-            transition: 'margin-left 0.3s ease',
+            marginLeft: '8px',
             backgroundColor: 'white',
           }}
         >

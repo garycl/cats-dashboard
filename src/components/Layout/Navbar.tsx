@@ -10,9 +10,6 @@ import {
 } from '@mui/material';
 import {
   Menu,
-  Notifications,
-  Settings,
-  AccountCircle,
 } from '@mui/icons-material';
 import { useData } from '../../context/DataContext';
 import { formatCurrency } from '../../utils/formatters';
@@ -25,13 +22,12 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuClick }) => {
   const theme = useTheme();
   const { data, loading, getLatestYear } = useData();
 
+  // Get unique airports from the raw dataset (all airports)
+  const latestYear = getLatestYear();
+  const latestYearData = data.filter(d => d.fiscalYear === latestYear);
 
-  const totalRevenue = data.length > 0 ? data
-    .filter(d => d.fiscalYear === getLatestYear())
-    .reduce((sum, d) => sum + (d.totalOperatingRevenue || 0), 0) : 0;
-
-  const totalAirports = data.length > 0 ?
-    new Set(data.filter(d => d.fiscalYear === getLatestYear()).map(d => d.locId)).size : 0;
+  const totalRevenue = latestYearData.reduce((sum, d) => sum + (d.totalOperatingRevenue || 0), 0);
+  const totalAirports = new Set(latestYearData.map(d => d.locId)).size;
 
   return (
     <AppBar
@@ -81,7 +77,7 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuClick }) => {
                 size="small"
               />
               <Chip
-                label={`FY ${getLatestYear()}`}
+                label={`FY ${latestYear}`}
                 sx={{
                   backgroundColor: theme.palette.secondary.main,
                   color: 'white',
@@ -93,18 +89,8 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuClick }) => {
           )}
         </Box>
 
-        {/* Right Section */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <IconButton sx={{ color: theme.palette.text.secondary }}>
-            <Notifications />
-          </IconButton>
-          <IconButton sx={{ color: theme.palette.text.secondary }}>
-            <Settings />
-          </IconButton>
-          <IconButton sx={{ color: theme.palette.text.secondary }}>
-            <AccountCircle />
-          </IconButton>
-        </Box>
+        {/* Right Section - Empty for now */}
+        <Box sx={{ width: 48 }} />
       </Toolbar>
     </AppBar>
   );
