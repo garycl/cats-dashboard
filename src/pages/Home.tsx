@@ -78,20 +78,28 @@ const Home: React.FC = () => {
 
   const navigationCards = [
     {
-      title: 'Executive Overview',
+      title: 'Executive Intelligence',
       description: 'Comprehensive analysis with strategic insights and performance indicators',
       icon: <Dashboard />,
-      path: '/executive-overview',
+      path: '/executive-intelligence',
       color: theme.palette.primary.main,
       stats: 'Strategic Dashboard',
     },
     {
-      title: 'Airport Performance',
+      title: 'Benchmarking',
       description: 'Side-by-side analysis and benchmarking tools',
       icon: <Compare />,
-      path: '/airport-comparison',
+      path: '/benchmarking',
       color: theme.palette.secondary.main,
       stats: 'Peer Analysis',
+    },
+    {
+      title: 'Trend Tracking',
+      description: 'Multi-year trend analysis and historical performance tracking',
+      icon: <TrendingUp />,
+      path: '/trend-tracking',
+      color: theme.palette.success.main,
+      stats: 'Trend Analysis',
     },
   ];
 
@@ -149,10 +157,10 @@ const Home: React.FC = () => {
                     px: 4,
                     py: 1.5,
                   }}
-                  onClick={() => navigate('/executive-overview')}
+                  onClick={() => navigate('/executive-intelligence')}
                   endIcon={<ArrowForward />}
                 >
-                  Explore Dashboard
+                  Executive Intelligence
                 </Button>
                 <Button
                   variant="outlined"
@@ -168,9 +176,27 @@ const Home: React.FC = () => {
                     px: 4,
                     py: 1.5,
                   }}
-                  onClick={() => navigate('/airport-comparison')}
+                  onClick={() => navigate('/benchmarking')}
                 >
-                  Compare Airports
+                  Benchmarking
+                </Button>
+                <Button
+                  variant="outlined"
+                  size="large"
+                  sx={{
+                    borderColor: 'white',
+                    color: 'white',
+                    '&:hover': {
+                      borderColor: 'white',
+                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                    },
+                    borderRadius: 3,
+                    px: 4,
+                    py: 1.5,
+                  }}
+                  onClick={() => navigate('/trend-tracking')}
+                >
+                  Trend Tracking
                 </Button>
               </Box>
             </Grid>
@@ -306,78 +332,6 @@ const Home: React.FC = () => {
             </Grid>
           </Box>
         )}
-
-        {/* Navigation Cards */}
-        <Box sx={{ mb: 6 }}>
-          <Typography variant="h4" sx={{ fontWeight: 600, mb: 4, textAlign: 'center' }}>
-            Analytics Tools
-          </Typography>
-
-          <Grid container spacing={4} justifyContent="center">
-            {navigationCards.map((card) => (
-              <Grid item xs={12} md={6} key={card.title}>
-                <Card
-                  sx={{
-                    height: '100%',
-                    cursor: 'pointer',
-                    transition: 'all 0.3s ease',
-                    '&:hover': {
-                      transform: 'translateY(-8px)',
-                      boxShadow: '0 12px 40px rgba(0,0,0,0.12)',
-                    },
-                  }}
-                  onClick={() => navigate(card.path)}
-                >
-                  <CardContent sx={{ p: 4, height: '100%', display: 'flex', flexDirection: 'column' }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                      <Box
-                        sx={{
-                          p: 1.5,
-                          borderRadius: 2,
-                          backgroundColor: card.color,
-                          color: 'white',
-                          mr: 2,
-                        }}
-                      >
-                        {card.icon}
-                      </Box>
-                      <Chip
-                        label={card.stats}
-                        size="small"
-                        sx={{
-                          backgroundColor: `${card.color}15`,
-                          color: card.color,
-                          fontWeight: 500,
-                        }}
-                      />
-                    </Box>
-
-                    <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
-                      {card.title}
-                    </Typography>
-
-                    <Typography variant="body2" color="textSecondary" sx={{ flexGrow: 1, mb: 3 }}>
-                      {card.description}
-                    </Typography>
-
-                    <Button
-                      endIcon={<ArrowForward />}
-                      sx={{
-                        alignSelf: 'flex-start',
-                        color: card.color,
-                        '&:hover': {
-                          backgroundColor: `${card.color}10`,
-                        },
-                      }}
-                    >
-                      Explore
-                    </Button>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
-        </Box>
 
         {/* Airport Coverage Map */}
         <Box sx={{ mb: 6 }}>

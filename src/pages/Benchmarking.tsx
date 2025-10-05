@@ -593,7 +593,7 @@ const AirportComparison: React.FC = () => {
       <Box sx={{ p: 3 }}>
         <LinearProgress />
         <Typography variant="h6" sx={{ mt: 2, textAlign: 'center' }}>
-          Loading Airport Performance Data...
+          Loading Airport Benchmarking Data...
         </Typography>
       </Box>
     );
@@ -604,7 +604,7 @@ const AirportComparison: React.FC = () => {
       {/* Header */}
       <Box sx={{ mb: 4 }}>
         <Typography variant="h3" sx={{ fontWeight: 700, mb: 2 }}>
-          Airport Performance
+          Airport Benchmarking
         </Typography>
         <Typography variant="h6" color="textSecondary">
           Side-by-side analysis and benchmarking of airport performance metrics

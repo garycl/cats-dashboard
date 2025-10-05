@@ -34,6 +34,9 @@ import {
   Warning,
   CheckCircle,
   AccountBalance,
+  Public,
+  Leaderboard,
+  ScatterPlot,
 } from '@mui/icons-material';
 import {
   ResponsiveContainer,
@@ -470,7 +473,7 @@ const ExecutiveOverview: React.FC = () => {
       <Box sx={{ p: 3 }}>
         <LinearProgress />
         <Typography variant="h6" sx={{ mt: 2, textAlign: 'center' }}>
-          Loading Executive Overview...
+          Loading Executive Intelligence...
         </Typography>
       </Box>
     );
@@ -481,7 +484,7 @@ const ExecutiveOverview: React.FC = () => {
       {/* Header */}
       <Box sx={{ mb: 4 }}>
         <Typography variant="h3" sx={{ fontWeight: 700, mb: 2 }}>
-          Executive Overview
+          Executive Intelligence
         </Typography>
         <Typography variant="h6" color="textSecondary">
           Comprehensive analysis and strategic insights for US airport financial performance
@@ -578,14 +581,26 @@ const ExecutiveOverview: React.FC = () => {
 
       {/* Performance Analysis - Tabbed Interface */}
       <Paper sx={{ p: 3, mb: 4 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: 1, borderColor: 'divider', mb: 3, pb: 2 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: 1, borderColor: 'divider', mb: 3, pb: 1 }}>
           <Typography variant="h5" sx={{ fontWeight: 600 }}>
             Performance Overview
           </Typography>
-          <Tabs value={selectedTab} onChange={handleTabChange} aria-label="performance analysis tabs">
-            <Tab label="📊 Map" />
-            <Tab label="🏆 Rankings" />
-            <Tab label="🔍 Matrix" />
+          <Tabs
+            value={selectedTab}
+            onChange={handleTabChange}
+            aria-label="performance analysis tabs"
+            sx={{
+              minHeight: 'auto',
+              '& .MuiTab-root': {
+                minHeight: 'auto',
+                py: 1,
+                fontSize: '0.875rem'
+              }
+            }}
+          >
+            <Tab icon={<Public fontSize="small" />} label="Map" iconPosition="start" />
+            <Tab icon={<Leaderboard fontSize="small" />} label="Rankings" iconPosition="start" />
+            <Tab icon={<ScatterPlot fontSize="small" />} label="Matrix" iconPosition="start" />
           </Tabs>
         </Box>
 

@@ -8,9 +8,9 @@ import Sidebar from './components/Layout/Sidebar';
 
 // Lazy load heavy page components
 const Home = React.lazy(() => import('./pages/Home'));
-const ExecutiveOverview = React.lazy(() => import('./pages/ExecutiveOverview'));
-const AirportComparison = React.lazy(() => import('./pages/AirportComparison'));
-const PerformanceTrends = React.lazy(() => import('./pages/PerformanceTrends'));
+const ExecutiveIntelligence = React.lazy(() => import('./pages/ExecutiveIntelligence'));
+const Benchmarking = React.lazy(() => import('./pages/Benchmarking'));
+const TrendTracking = React.lazy(() => import('./pages/TrendTracking'));
 
 // Hooks and Context
 import { DataProvider } from './context/DataContext';
@@ -66,9 +66,9 @@ const App: React.FC = () => {
             <Suspense fallback={<PageLoader />}>
               <Routes>
                 <Route path="/" element={<Home />} />
-                <Route path="/executive-overview" element={<ExecutiveOverview />} />
-                <Route path="/airport-comparison" element={<AirportComparison />} />
-                <Route path="/performance-trends" element={<PerformanceTrends />} />
+                <Route path="/executive-intelligence" element={<ExecutiveIntelligence />} />
+                <Route path="/benchmarking" element={<Benchmarking />} />
+                <Route path="/trend-tracking" element={<TrendTracking />} />
               </Routes>
             </Suspense>
           </Box>

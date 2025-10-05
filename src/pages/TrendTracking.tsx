@@ -291,7 +291,7 @@ const PerformanceTrends: React.FC = () => {
       {/* Header */}
       <Box sx={{ mb: 4 }}>
         <Typography variant="h3" sx={{ fontWeight: 700, mb: 2 }}>
-          Performance Trends
+          Performance Tracking
         </Typography>
         <Typography variant="h6" color="textSecondary">
           Multi-year trend analysis and historical performance tracking

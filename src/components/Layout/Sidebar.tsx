@@ -14,7 +14,7 @@ import {
 } from '@mui/material';
 import {
   Home,
-  Dashboard,
+  Insights,
   Compare,
   TrendingUp,
   ChevronLeft,
@@ -30,9 +30,9 @@ interface SidebarProps {
 
 const navigationItems = [
   { text: 'Home', icon: <Home />, path: '/' },
-  { text: 'Executive Overview', icon: <Dashboard />, path: '/executive-overview' },
-  { text: 'Airport Performance', icon: <Compare />, path: '/airport-comparison' },
-  { text: 'Performance Trends', icon: <TrendingUp />, path: '/performance-trends' },
+  { text: 'Executive Intelligence', icon: <Insights />, path: '/executive-intelligence' },
+  { text: 'Benchmarking', icon: <Compare />, path: '/benchmarking' },
+  { text: 'Trend Tracking', icon: <TrendingUp />, path: '/trend-tracking' },
 ];
 
 const Sidebar: React.FC<SidebarProps> = ({ open, onToggle }) => {

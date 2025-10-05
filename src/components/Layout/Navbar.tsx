@@ -50,8 +50,8 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuClick }) => {
   const availableYears = getAvailableYears();
   const currentYear = selectedYears.length > 0 ? selectedYears[0] : Math.max(...availableYears);
 
-  // Hide year filter on Performance Trends page
-  const showYearFilter = location.pathname !== '/performance-trends';
+  // Hide year filter on Trend Tracking page
+  const showYearFilter = location.pathname !== '/trend-tracking';
 
   // US Census Bureau Region mapping (using full state names as they appear in the data)
   const stateToRegion: { [key: string]: string } = {
@@ -192,7 +192,7 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuClick }) => {
         {/* Center Section - Global Filters */}
         {!loading && data.length > 0 && (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexGrow: 1 }}>
-            {/* Year Selector - Hidden on Performance Trends page */}
+            {/* Year Selector - Hidden on Trend Tracking page */}
             {showYearFilter && (
               <FormControl size="small" sx={{ minWidth: 100 }}>
                 <InputLabel>Year</InputLabel>
