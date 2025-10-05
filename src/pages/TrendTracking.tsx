@@ -100,6 +100,25 @@ const TrendTracking: React.FC = () => {
     }
   }, [availableAirports, selectedAirports]);
 
+  // Clear selected region/state averages that are no longer available when filters change
+  React.useEffect(() => {
+    const availableRegionSet = new Set(availableRegions);
+    const validRegions = selectedRegionAverages.filter(region => availableRegionSet.has(region));
+
+    if (validRegions.length !== selectedRegionAverages.length) {
+      setSelectedRegionAverages(validRegions);
+    }
+  }, [availableRegions]);
+
+  React.useEffect(() => {
+    const availableStateSet = new Set(availableStates);
+    const validStates = selectedStateAverages.filter(state => availableStateSet.has(state));
+
+    if (validStates.length !== selectedStateAverages.length) {
+      setSelectedStateAverages(validStates);
+    }
+  }, [availableStates]);
+
   const handleAirportChange = (event: SelectChangeEvent<string[]>) => {
     const value = event.target.value;
     setSelectedAirports(typeof value === 'string' ? value.split(',') : value);
@@ -194,6 +213,21 @@ const TrendTracking: React.FC = () => {
   const availableStates = React.useMemo(() => {
     return Array.from(new Set(filteredData.map(d => d.state))).sort();
   }, [filteredData]);
+
+  // Get available regions based on what states are in filtered data
+  const availableRegions = React.useMemo(() => {
+    const statesInData = new Set(availableStates);
+    const regionsWithData = new Set<string>();
+
+    statesInData.forEach(state => {
+      const region = stateToRegion[state];
+      if (region) {
+        regionsWithData.add(region);
+      }
+    });
+
+    return regions.filter(region => regionsWithData.has(region));
+  }, [availableStates]);
 
   const trendData = React.useMemo(() => {
     if (selectedAirports.length === 0 && selectedRegionAverages.length === 0 && selectedStateAverages.length === 0) {
@@ -377,7 +411,7 @@ const TrendTracking: React.FC = () => {
                 label="Add Region Avg/Median"
                 renderValue={(selected) => selected.length > 0 ? `${selected.length} region${selected.length > 1 ? 's' : ''}` : ''}
               >
-                {regions.map((region) => (
+                {availableRegions.map((region) => (
                   <MenuItem key={region} value={region}>
                     {region}
                   </MenuItem>
