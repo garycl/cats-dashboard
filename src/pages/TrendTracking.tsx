@@ -32,6 +32,45 @@ import {
 import { useData } from '../context/DataContext';
 import { formatCurrency, formatNumber, formatPercentage, formatCostPerEnplanement } from '../utils/formatters';
 
+// State to region mapping (US Census Bureau definitions) - Moved outside component
+const STATE_TO_REGION: { [key: string]: string } = {
+  // Northeast Region
+  'Connecticut': 'Northeast', 'Maine': 'Northeast', 'Massachusetts': 'Northeast', 'New Hampshire': 'Northeast',
+  'Rhode Island': 'Northeast', 'Vermont': 'Northeast', 'New Jersey': 'Northeast', 'New York': 'Northeast', 'Pennsylvania': 'Northeast',
+  // South Region
+  'Delaware': 'South', 'Florida': 'South', 'Georgia': 'South', 'Maryland': 'South',
+  'North Carolina': 'South', 'South Carolina': 'South', 'Virginia': 'South', 'West Virginia': 'South',
+  'Alabama': 'South', 'Kentucky': 'South', 'Mississippi': 'South', 'Tennessee': 'South',
+  'Arkansas': 'South', 'Louisiana': 'South', 'Oklahoma': 'South', 'Texas': 'South',
+  // Midwest Region
+  'Illinois': 'Midwest', 'Indiana': 'Midwest', 'Michigan': 'Midwest', 'Ohio': 'Midwest', 'Wisconsin': 'Midwest',
+  'Iowa': 'Midwest', 'Kansas': 'Midwest', 'Minnesota': 'Midwest', 'Missouri': 'Midwest', 'Nebraska': 'Midwest',
+  'North Dakota': 'Midwest', 'South Dakota': 'Midwest',
+  // West Region
+  'Alaska': 'West', 'California': 'West', 'Colorado': 'West', 'Hawaii': 'West', 'Idaho': 'West',
+  'Montana': 'West', 'Nevada': 'West', 'Oregon': 'West', 'Utah': 'West', 'Washington': 'West', 'Wyoming': 'West',
+  'Arizona': 'West', 'New Mexico': 'West',
+  // Territories
+  'Puerto Rico': 'Territories', 'Virgin Islands': 'Territories', 'American Samoa': 'Territories',
+  'Guam': 'Territories', 'Pacific Islands': 'Territories',
+};
+
+// State abbreviations - Moved outside component
+const STATE_TO_ABBREV: { [key: string]: string } = {
+  'Alabama': 'AL', 'Alaska': 'AK', 'Arizona': 'AZ', 'Arkansas': 'AR', 'California': 'CA', 'Colorado': 'CO',
+  'Connecticut': 'CT', 'Delaware': 'DE', 'Florida': 'FL', 'Georgia': 'GA', 'Hawaii': 'HI', 'Idaho': 'ID',
+  'Illinois': 'IL', 'Indiana': 'IN', 'Iowa': 'IA', 'Kansas': 'KS', 'Kentucky': 'KY', 'Louisiana': 'LA',
+  'Maine': 'ME', 'Maryland': 'MD', 'Massachusetts': 'MA', 'Michigan': 'MI', 'Minnesota': 'MN', 'Mississippi': 'MS',
+  'Missouri': 'MO', 'Montana': 'MT', 'Nebraska': 'NE', 'Nevada': 'NV', 'New Hampshire': 'NH', 'New Jersey': 'NJ',
+  'New Mexico': 'NM', 'New York': 'NY', 'North Carolina': 'NC', 'North Dakota': 'ND', 'Ohio': 'OH', 'Oklahoma': 'OK',
+  'Oregon': 'OR', 'Pennsylvania': 'PA', 'Rhode Island': 'RI', 'South Carolina': 'SC', 'South Dakota': 'SD',
+  'Tennessee': 'TN', 'Texas': 'TX', 'Utah': 'UT', 'Vermont': 'VT', 'Virginia': 'VA', 'Washington': 'WA',
+  'West Virginia': 'WV', 'Wisconsin': 'WI', 'Wyoming': 'WY', 'Puerto Rico': 'PR', 'Virgin Islands': 'VI',
+  'American Samoa': 'AS', 'Guam': 'GU', 'Pacific Islands': 'PI',
+};
+
+const REGIONS = ['Northeast', 'South', 'Midwest', 'West', 'Territories'];
+
 const TrendTracking: React.FC = () => {
   const theme = useTheme();
   const { data, loading, selectedAirport, selectedStates, selectedHubSizes } = useData();
@@ -100,25 +139,6 @@ const TrendTracking: React.FC = () => {
     }
   }, [availableAirports, selectedAirports]);
 
-  // Clear selected region/state averages that are no longer available when filters change
-  React.useEffect(() => {
-    const availableRegionSet = new Set(availableRegions);
-    const validRegions = selectedRegionAverages.filter(region => availableRegionSet.has(region));
-
-    if (validRegions.length !== selectedRegionAverages.length) {
-      setSelectedRegionAverages(validRegions);
-    }
-  }, [availableRegions]);
-
-  React.useEffect(() => {
-    const availableStateSet = new Set(availableStates);
-    const validStates = selectedStateAverages.filter(state => availableStateSet.has(state));
-
-    if (validStates.length !== selectedStateAverages.length) {
-      setSelectedStateAverages(validStates);
-    }
-  }, [availableStates]);
-
   const handleAirportChange = (event: SelectChangeEvent<string[]>) => {
     const value = event.target.value;
     setSelectedAirports(typeof value === 'string' ? value.split(',') : value);
@@ -170,44 +190,6 @@ const TrendTracking: React.FC = () => {
 
   const selectedMetricInfo = metrics.find(m => m.key === selectedMetric);
 
-  // State to region mapping (US Census Bureau definitions)
-  const stateToRegion: { [key: string]: string } = {
-    // Northeast Region
-    'Connecticut': 'Northeast', 'Maine': 'Northeast', 'Massachusetts': 'Northeast', 'New Hampshire': 'Northeast',
-    'Rhode Island': 'Northeast', 'Vermont': 'Northeast', 'New Jersey': 'Northeast', 'New York': 'Northeast', 'Pennsylvania': 'Northeast',
-    // South Region
-    'Delaware': 'South', 'Florida': 'South', 'Georgia': 'South', 'Maryland': 'South',
-    'North Carolina': 'South', 'South Carolina': 'South', 'Virginia': 'South', 'West Virginia': 'South',
-    'Alabama': 'South', 'Kentucky': 'South', 'Mississippi': 'South', 'Tennessee': 'South',
-    'Arkansas': 'South', 'Louisiana': 'South', 'Oklahoma': 'South', 'Texas': 'South',
-    // Midwest Region
-    'Illinois': 'Midwest', 'Indiana': 'Midwest', 'Michigan': 'Midwest', 'Ohio': 'Midwest', 'Wisconsin': 'Midwest',
-    'Iowa': 'Midwest', 'Kansas': 'Midwest', 'Minnesota': 'Midwest', 'Missouri': 'Midwest', 'Nebraska': 'Midwest',
-    'North Dakota': 'Midwest', 'South Dakota': 'Midwest',
-    // West Region
-    'Alaska': 'West', 'California': 'West', 'Colorado': 'West', 'Hawaii': 'West', 'Idaho': 'West',
-    'Montana': 'West', 'Nevada': 'West', 'Oregon': 'West', 'Utah': 'West', 'Washington': 'West', 'Wyoming': 'West',
-    'Arizona': 'West', 'New Mexico': 'West',
-    // Territories (not part of Census regions, grouped separately)
-    'Puerto Rico': 'Territories', 'Virgin Islands': 'Territories', 'American Samoa': 'Territories',
-    'Guam': 'Territories', 'Pacific Islands': 'Territories',
-  };
-
-  // State to abbreviation mapping
-  const stateToAbbrev: { [key: string]: string } = {
-    'Alabama': 'AL', 'Alaska': 'AK', 'Arizona': 'AZ', 'Arkansas': 'AR', 'California': 'CA', 'Colorado': 'CO',
-    'Connecticut': 'CT', 'Delaware': 'DE', 'Florida': 'FL', 'Georgia': 'GA', 'Hawaii': 'HI', 'Idaho': 'ID',
-    'Illinois': 'IL', 'Indiana': 'IN', 'Iowa': 'IA', 'Kansas': 'KS', 'Kentucky': 'KY', 'Louisiana': 'LA',
-    'Maine': 'ME', 'Maryland': 'MD', 'Massachusetts': 'MA', 'Michigan': 'MI', 'Minnesota': 'MN', 'Mississippi': 'MS',
-    'Missouri': 'MO', 'Montana': 'MT', 'Nebraska': 'NE', 'Nevada': 'NV', 'New Hampshire': 'NH', 'New Jersey': 'NJ',
-    'New Mexico': 'NM', 'New York': 'NY', 'North Carolina': 'NC', 'North Dakota': 'ND', 'Ohio': 'OH', 'Oklahoma': 'OK',
-    'Oregon': 'OR', 'Pennsylvania': 'PA', 'Rhode Island': 'RI', 'South Carolina': 'SC', 'South Dakota': 'SD',
-    'Tennessee': 'TN', 'Texas': 'TX', 'Utah': 'UT', 'Vermont': 'VT', 'Virginia': 'VA', 'Washington': 'WA',
-    'West Virginia': 'WV', 'Wisconsin': 'WI', 'Wyoming': 'WY', 'Puerto Rico': 'PR', 'Virgin Islands': 'VI',
-    'American Samoa': 'AS', 'Guam': 'GU', 'Pacific Islands': 'PI',
-  };
-
-  const regions = ['Northeast', 'South', 'Midwest', 'West', 'Territories'];
 
   // Get available states from filtered data
   const availableStates = React.useMemo(() => {
@@ -220,17 +202,28 @@ const TrendTracking: React.FC = () => {
     const regionsWithData = new Set<string>();
 
     statesInData.forEach(state => {
-      const region = stateToRegion[state];
+      const region = STATE_TO_REGION[state];
       if (region) {
         regionsWithData.add(region);
       }
     });
 
-    return regions.filter(region => regionsWithData.has(region));
+    return REGIONS.filter(region => regionsWithData.has(region));
   }, [availableStates]);
 
+  // Filter selected regions/states to only include those available in current filtered data
+  const activeRegionAverages = React.useMemo(() => {
+    const availableRegionSet = new Set(availableRegions);
+    return selectedRegionAverages.filter(region => availableRegionSet.has(region));
+  }, [selectedRegionAverages, availableRegions]);
+
+  const activeStateAverages = React.useMemo(() => {
+    const availableStateSet = new Set(availableStates);
+    return selectedStateAverages.filter(state => availableStateSet.has(state));
+  }, [selectedStateAverages, availableStates]);
+
   const trendData = React.useMemo(() => {
-    if (selectedAirports.length === 0 && selectedRegionAverages.length === 0 && selectedStateAverages.length === 0) {
+    if (selectedAirports.length === 0 && activeRegionAverages.length === 0 && activeStateAverages.length === 0) {
       return [];
     }
 
@@ -249,8 +242,8 @@ const TrendTracking: React.FC = () => {
       });
 
       // Add region averages/medians
-      selectedRegionAverages.forEach(region => {
-        const regionData = yearData.filter(d => stateToRegion[d.state] === region);
+      activeRegionAverages.forEach(region => {
+        const regionData = yearData.filter(d => STATE_TO_REGION[d.state] === region);
         const values = regionData
           .map(d => calculateDerivedMetric(d, selectedMetric))
           .filter(v => v != null && !isNaN(v));
@@ -270,14 +263,14 @@ const TrendTracking: React.FC = () => {
       });
 
       // Add state averages/medians
-      selectedStateAverages.forEach(state => {
+      activeStateAverages.forEach(state => {
         const stateData = yearData.filter(d => d.state === state);
         const values = stateData
           .map(d => calculateDerivedMetric(d, selectedMetric))
           .filter(v => v != null && !isNaN(v));
 
         if (values.length > 0) {
-          const label = stateToAbbrev[state] || state;  // Use state abbreviation
+          const label = STATE_TO_ABBREV[state] || state;  // Use state abbreviation
           if (useMedian) {
             values.sort((a, b) => a - b);
             const mid = Math.floor(values.length / 2);
@@ -292,7 +285,7 @@ const TrendTracking: React.FC = () => {
 
       return dataPoint;
     });
-  }, [filteredData, selectedAirports, selectedRegionAverages, selectedStateAverages, selectedMetric, useMedian, stateToRegion]);
+  }, [filteredData, selectedAirports, activeRegionAverages, activeStateAverages, selectedMetric, useMedian]);
 
   // ColorBrewer Set2 palette for airports (bright, vibrant)
   const airportColors = [
@@ -504,10 +497,10 @@ const TrendTracking: React.FC = () => {
                 const allKeys = Object.keys(trendData[0] || {}).filter(key => key !== 'year');
 
                 const airports = allKeys.filter(key => selectedAirports.includes(key));
-                const regionAvgs = allKeys.filter(key => regions.includes(key));
+                const regionAvgs = allKeys.filter(key => REGIONS.includes(key));
                 const stateAvgs = allKeys.filter(key => {
                   // Check if key is a state abbreviation
-                  return Object.values(stateToAbbrev).includes(key);
+                  return Object.values(STATE_TO_ABBREV).includes(key);
                 });
 
                 // Render states and regions first (background), then airports on top
