@@ -27,7 +27,7 @@ export default defineConfig({
           'maps-vendor': ['maplibre-gl', 'react-map-gl'],
           // Large individual components
           'airport-map': ['./src/components/Maps/AirportMap.tsx'],
-          'airport-comparison': ['./src/pages/AirportComparison.tsx']
+          'benchmarking': ['./src/pages/Benchmarking.tsx']
         }
       }
     }

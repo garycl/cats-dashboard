@@ -401,7 +401,7 @@ const ExecutiveIntelligence: React.FC = () => {
 
   // Hub size is now controlled by global navbar filter
 
-  // Map ExecutiveOverview metrics to AirportMap metrics
+  // Map ExecutiveIntelligence metrics to AirportMap metrics
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setSelectedTab(newValue);
