@@ -9,6 +9,7 @@ import {
   ResponsiveContainer,
   Cell,
   ReferenceLine,
+  ZoomableGroup,
 } from 'recharts';
 import { useTheme } from '@mui/material/styles';
 import {
@@ -165,11 +166,12 @@ const METRIC_OPTIONS: MetricOption[] = [
   },
 ];
 
+// Using Okabe-Ito colorblind-friendly palette for categorical data
 const HUB_COLORS = {
-  'L': '#1976d2', // Large - Blue
-  'M': '#388e3c', // Medium - Green
-  'S': '#f57c00', // Small - Orange
-  'N': '#d32f2f', // Non-hub - Red
+  'L': '#0173B2', // Large - Blue (distinctive, professional)
+  'M': '#029E73', // Medium - Teal/Green (clearly different from blue)
+  'S': '#DE8F05', // Small - Orange (warm contrast)
+  'N': '#CC78BC', // Non-hub - Purple (unique, easily distinguished)
 };
 
 const EXECUTIVE_VIEWS: Record<ExecutiveView, ExecutiveConfig> = {
@@ -179,7 +181,7 @@ const EXECUTIVE_VIEWS: Record<ExecutiveView, ExecutiveConfig> = {
     xAxis: 'revenueCAGR3Y',
     yAxis: 'operatingMargin',
     sizeMetric: 'enplanements',
-    colorMetric: 'nonAirlineRevenueShare'
+    colorMetric: 'quadrant'
   },
   'cash-burden': {
     title: 'Cash & Burden Analysis',
@@ -187,7 +189,7 @@ const EXECUTIVE_VIEWS: Record<ExecutiveView, ExecutiveConfig> = {
     xAxis: 'revenueCAGR3Y',
     yAxis: 'debtServiceBurden',
     sizeMetric: 'unrestrictedCashAndInvestments',
-    colorMetric: 'capexIntensity'
+    colorMetric: 'quadrant'
   },
   'unit-economics': {
     title: 'Unit Economics',
@@ -195,7 +197,7 @@ const EXECUTIVE_VIEWS: Record<ExecutiveView, ExecutiveConfig> = {
     xAxis: 'nonAirlineRevenuePerEnplanement',
     yAxis: 'omExpensePerEnplanement',
     sizeMetric: 'enplanements',
-    colorMetric: 'operatingMargin'
+    colorMetric: 'quadrant'
   }
 };
 
@@ -205,14 +207,17 @@ const BubbleChart: React.FC<BubbleChartProps> = ({
   height = 600,
 }) => {
   const theme = useTheme();
-  const { data: allData } = useData(); // Get full dataset for growth calculations
+  const { data: allData, selectedAirport, setSelectedAirport } = useData();
 
   const [chartMode, setChartMode] = useState<ChartMode>('executive');
   const [executiveView, setExecutiveView] = useState<ExecutiveView>('growth-profitability');
   const [xAxis, setXAxis] = useState<keyof AirportData>('operatingMargin');
   const [yAxis, setYAxis] = useState<keyof AirportData>('revenueGrowth');
   const [sizeMetric, setSizeMetric] = useState<keyof AirportData>('enplanements');
+  const [colorMetric, setColorMetric] = useState<string>('quadrant'); // 'hubSize', 'quadrant', or metric key
   const [quadrantMode, setQuadrantMode] = useState<'off' | 'average' | 'median'>('average');
+  const [hoveredAirport, setHoveredAirport] = useState<string | null>(null);
+  const [excludeOutliers, setExcludeOutliers] = useState<boolean>(true);
 
   // Auto-configure axes when in executive mode
   React.useEffect(() => {
@@ -341,6 +346,37 @@ const BubbleChart: React.FC<BubbleChartProps> = ({
     });
   }, [data, allData, xAxis, yAxis, sizeMetric]);
 
+  // Filter outliers using IQR method
+  const filteredData = React.useMemo(() => {
+    if (!excludeOutliers) return processedData;
+
+    const xValues = processedData.map(d => Number(d[xAxis]) || 0);
+    const yValues = processedData.map(d => Number(d[yAxis]) || 0);
+
+    // Calculate IQR for X axis
+    const xSorted = [...xValues].sort((a, b) => a - b);
+    const xQ1 = xSorted[Math.floor(xSorted.length * 0.25)];
+    const xQ3 = xSorted[Math.floor(xSorted.length * 0.75)];
+    const xIQR = xQ3 - xQ1;
+    const xLowerBound = xQ1 - 1.5 * xIQR;
+    const xUpperBound = xQ3 + 1.5 * xIQR;
+
+    // Calculate IQR for Y axis
+    const ySorted = [...yValues].sort((a, b) => a - b);
+    const yQ1 = ySorted[Math.floor(ySorted.length * 0.25)];
+    const yQ3 = ySorted[Math.floor(ySorted.length * 0.75)];
+    const yIQR = yQ3 - yQ1;
+    const yLowerBound = yQ1 - 1.5 * yIQR;
+    const yUpperBound = yQ3 + 1.5 * yIQR;
+
+    return processedData.filter(d => {
+      const xValue = Number(d[xAxis]) || 0;
+      const yValue = Number(d[yAxis]) || 0;
+      return xValue >= xLowerBound && xValue <= xUpperBound &&
+             yValue >= yLowerBound && yValue <= yUpperBound;
+    });
+  }, [processedData, excludeOutliers, xAxis, yAxis]);
+
   // Check if growth metrics are available
   const hasMultipleYears = React.useMemo(() => {
     const years = new Set(allData.map(d => d.fiscalYear));
@@ -355,13 +391,13 @@ const BubbleChart: React.FC<BubbleChartProps> = ({
 
   // Calculate size scaling for bubbles
   const sizeRange = React.useMemo(() => {
-    if (processedData.length === 0) return { min: 0, max: 1 };
+    if (filteredData.length === 0) return { min: 0, max: 1 };
 
-    const values = processedData.map(d => Number(d[sizeMetric]) || 0);
+    const values = filteredData.map(d => Number(d[sizeMetric]) || 0);
     const min = Math.min(...values);
     const max = Math.max(...values);
     return { min, max };
-  }, [processedData, sizeMetric]);
+  }, [filteredData, sizeMetric]);
 
   const calculateBubbleSize = (value: number) => {
     if (sizeRange.max === sizeRange.min) return 10;
@@ -370,36 +406,120 @@ const BubbleChart: React.FC<BubbleChartProps> = ({
     return size;
   };
 
+  // Calculate axis domains with padding to center the cluster
+  const axisDomains = React.useMemo(() => {
+    if (filteredData.length === 0) return { xDomain: [0, 1], yDomain: [0, 1] };
+
+    const xValues = filteredData.map(d => Number(d[xAxis]) || 0);
+    const yValues = filteredData.map(d => Number(d[yAxis]) || 0);
+
+    const xMin = Math.min(...xValues);
+    const xMax = Math.max(...xValues);
+    const yMin = Math.min(...yValues);
+    const yMax = Math.max(...yValues);
+
+    // Add padding to center the cluster better (20% padding on each side)
+    const xRange = xMax - xMin;
+    const yRange = yMax - yMin;
+    const xPadding = xRange * 0.2;
+    const yPadding = yRange * 0.2;
+
+    return {
+      xDomain: [xMin - xPadding, xMax + xPadding],
+      yDomain: [yMin - yPadding, yMax + yPadding]
+    };
+  }, [filteredData, xAxis, yAxis]);
+
+  // Calculate normalized ranges for quadrant gradient
+  const axisRanges = React.useMemo(() => {
+    if (filteredData.length === 0) return { xMin: 0, xMax: 1, yMin: 0, yMax: 1 };
+
+    const xValues = filteredData.map(d => Number(d[xAxis]) || 0);
+    const yValues = filteredData.map(d => Number(d[yAxis]) || 0);
+
+    return {
+      xMin: Math.min(...xValues),
+      xMax: Math.max(...xValues),
+      yMin: Math.min(...yValues),
+      yMax: Math.max(...yValues),
+    };
+  }, [filteredData, xAxis, yAxis]);
+
+  const getQuadrantScore = (airport: any) => {
+    const xValue = Number(airport[xAxis]) || 0;
+    const yValue = Number(airport[yAxis]) || 0;
+
+    // Normalize x and y to 0-1 range
+    const xNorm = axisRanges.xMax > axisRanges.xMin
+      ? (xValue - axisRanges.xMin) / (axisRanges.xMax - axisRanges.xMin)
+      : 0.5;
+    const yNorm = axisRanges.yMax > axisRanges.yMin
+      ? (yValue - axisRanges.yMin) / (axisRanges.yMax - axisRanges.yMin)
+      : 0.5;
+
+    // Composite score: average of normalized x and y (0 = bottom-left, 1 = top-right)
+    return (xNorm + yNorm) / 2;
+  };
+
+  // Inverted Viridis color scale helper (yellow to purple)
+  const viridisColors = [
+    [253, 231, 37],   // 0.0 - bright yellow
+    [181, 222, 43],   // 0.1
+    [110, 206, 88],   // 0.2
+    [53, 183, 121],   // 0.3
+    [31, 158, 137],   // 0.4
+    [38, 130, 142],   // 0.5
+    [49, 104, 142],   // 0.6
+    [62, 74, 137],    // 0.7
+    [72, 40, 120],    // 0.8
+    [68, 1, 84]       // 1.0 - dark purple
+  ];
+
+  const getViridisColor = (t: number) => {
+    const clamped = Math.max(0, Math.min(1, t));
+    const index = clamped * (viridisColors.length - 1);
+    const lower = Math.floor(index);
+    const upper = Math.ceil(index);
+    const frac = index - lower;
+
+    const [r1, g1, b1] = viridisColors[lower];
+    const [r2, g2, b2] = viridisColors[upper];
+
+    const r = Math.round(r1 + (r2 - r1) * frac);
+    const g = Math.round(g1 + (g2 - g1) * frac);
+    const b = Math.round(b1 + (b2 - b1) * frac);
+
+    return `rgb(${r}, ${g}, ${b})`;
+  };
+
   // Color scale for executive mode
   const getExecutiveColor = (airport: any) => {
-    if (chartMode === 'explore') {
-      return HUB_COLORS[airport.hubSize as keyof typeof HUB_COLORS];
+    const metricKey = chartMode === 'executive'
+      ? EXECUTIVE_VIEWS[executiveView].colorMetric
+      : colorMetric;
+
+    // Quadrant-based coloring (used in both modes)
+    if (metricKey === 'quadrant') {
+      const score = getQuadrantScore(airport);
+      return getViridisColor(score);
     }
 
-    const colorMetric = EXECUTIVE_VIEWS[executiveView].colorMetric;
-    const value = airport[colorMetric];
+    // In explore mode, use selected color metric
+    if (chartMode === 'explore') {
+      if (colorMetric === 'hubSize') {
+        return HUB_COLORS[airport.hubSize as keyof typeof HUB_COLORS];
+      }
+      // Use Viridis for metric-based coloring in explore mode
+      const value = airport[colorMetric];
+      if (value === null || value === undefined) return '#grey';
 
-    if (value === null || value === undefined) return '#grey';
+      // Determine range based on filtered data
+      const allValues = filteredData.map(d => d[colorMetric] as number).filter(v => v !== null && v !== undefined);
+      const min = Math.min(...allValues);
+      const max = Math.max(...allValues);
+      const normalized = max > min ? (value - min) / (max - min) : 0.5;
 
-    // Color scales for different metrics
-    if (colorMetric === 'nonAirlineRevenueShare') {
-      // Low to High: Red to Green
-      const normalized = Math.min(100, Math.max(0, value)) / 100;
-      const red = Math.round(255 * (1 - normalized));
-      const green = Math.round(255 * normalized);
-      return `rgb(${red}, ${green}, 50)`;
-    } else if (colorMetric === 'operatingMargin') {
-      // Negative to Positive: Red to Green
-      const normalized = Math.min(50, Math.max(-50, value)) / 100 + 0.5;
-      const red = Math.round(255 * (1 - normalized));
-      const green = Math.round(255 * normalized);
-      return `rgb(${red}, ${green}, 50)`;
-    } else if (colorMetric === 'capexIntensity') {
-      // Low to High: Green to Red (lower is better)
-      const normalized = Math.min(50, Math.max(0, value)) / 50;
-      const red = Math.round(255 * normalized);
-      const green = Math.round(255 * (1 - normalized));
-      return `rgb(${red}, ${green}, 50)`;
+      return getViridisColor(normalized);
     }
 
     return '#1976d2'; // Default blue
@@ -429,7 +549,7 @@ const BubbleChart: React.FC<BubbleChartProps> = ({
   const calculateQuadrantLines = () => {
     if (quadrantMode === 'off') return { xLine: 0, yLine: 0, xLabelStrategy: 'bottom', yLabelStrategy: 'right' };
 
-    const validData = processedData.filter(d =>
+    const validData = filteredData.filter(d =>
       d[xAxis] != null && !isNaN(Number(d[xAxis])) &&
       d[yAxis] != null && !isNaN(Number(d[yAxis]))
     );
@@ -463,25 +583,62 @@ const BubbleChart: React.FC<BubbleChartProps> = ({
       yLine = yValues.reduce((sum, val) => sum + val, 0) / yValues.length;
     }
 
-    // Intelligent positioning: analyze data clusters
+    // Calculate density on each side of the reference lines
     const xRange = xMax - xMin;
     const yRange = yMax - yMin;
 
-    // Create density map - divide chart into 4 quadrants
-    const bottomLeft = validData.filter(d => Number(d[xAxis]) < xLine && Number(d[yAxis]) < yLine).length;
-    const bottomRight = validData.filter(d => Number(d[xAxis]) >= xLine && Number(d[yAxis]) < yLine).length;
-    const topLeft = validData.filter(d => Number(d[xAxis]) < xLine && Number(d[yAxis]) >= yLine).length;
-    const topRight = validData.filter(d => Number(d[xAxis]) >= xLine && Number(d[yAxis]) >= yLine).length;
+    // For vertical line (xLine): Count points in label placement areas
+    // Define label zones: top 15% and bottom 15% of chart height
+    const topZoneMin = yLine + (yMax - yLine) * 0.6;  // Upper region
+    const bottomZoneMax = yLine - (yLine - yMin) * 0.6;  // Lower region
 
-    // For X-axis label (vertical line): choose top or bottom based on where fewer points are
-    const bottomDensity = bottomLeft + bottomRight;
-    const topDensity = topLeft + topRight;
-    const xLabelStrategy = topDensity < bottomDensity ? 'top' : 'bottom';
+    let topZoneCount = 0;
+    let bottomZoneCount = 0;
 
-    // For Y-axis label (horizontal line): choose left or right based on where fewer points are
-    const leftDensity = bottomLeft + topLeft;
-    const rightDensity = bottomRight + topRight;
-    const yLabelStrategy = leftDensity < rightDensity ? 'left' : 'right';
+    validData.forEach(d => {
+      const xVal = Number(d[xAxis]);
+      const yVal = Number(d[yAxis]);
+
+      // Only check points near the vertical line
+      if (Math.abs(xVal - xLine) < xRange * 0.15) {
+        // Count points that would interfere with label placement
+        if (yVal >= topZoneMin) {
+          topZoneCount++;
+        }
+        if (yVal <= bottomZoneMax) {
+          bottomZoneCount++;
+        }
+      }
+    });
+
+    // Place label where there are fewer interfering points
+    const xLabelStrategy = topZoneCount <= bottomZoneCount ? 'top' : 'bottom';
+
+    // For horizontal line (yLine): Count points in label placement areas
+    const leftZoneMax = xLine - (xLine - xMin) * 0.6;  // Left region
+    const rightZoneMin = xLine + (xMax - xLine) * 0.6;  // Right region
+
+    let leftZoneCount = 0;
+    let rightZoneCount = 0;
+
+    validData.forEach(d => {
+      const xVal = Number(d[xAxis]);
+      const yVal = Number(d[yAxis]);
+
+      // Only check points near the horizontal line
+      if (Math.abs(yVal - yLine) < yRange * 0.15) {
+        // Count points that would interfere with label placement
+        if (xVal <= leftZoneMax) {
+          leftZoneCount++;
+        }
+        if (xVal >= rightZoneMin) {
+          rightZoneCount++;
+        }
+      }
+    });
+
+    // Place label where there are fewer interfering points
+    const yLabelStrategy = leftZoneCount <= rightZoneCount ? 'left' : 'right';
 
     return { xLine, yLine, xLabelStrategy, yLabelStrategy };
   };
@@ -614,6 +771,17 @@ const BubbleChart: React.FC<BubbleChartProps> = ({
               <MenuItem value="median">Median Lines</MenuItem>
             </Select>
           </FormControl>
+
+          <FormControlLabel
+            control={
+              <Switch
+                checked={excludeOutliers}
+                onChange={(e) => setExcludeOutliers(e.target.checked)}
+                size="small"
+              />
+            }
+            label={`Exclude Outliers${excludeOutliers ? ` (${processedData.length - filteredData.length} excl.)` : ''}`}
+          />
         </Box>
 
         {/* Executive View Description */}
@@ -631,7 +799,7 @@ const BubbleChart: React.FC<BubbleChartProps> = ({
         {/* Custom Controls for Explore Mode */}
         {chartMode === 'explore' && (
           <Grid container spacing={2} sx={{ mb: 3 }}>
-            <Grid item xs={12} md={4}>
+            <Grid item xs={12} md={3}>
               <FormControl fullWidth size="small">
                 <InputLabel>X-Axis (Horizontal)</InputLabel>
                 <Select
@@ -648,7 +816,7 @@ const BubbleChart: React.FC<BubbleChartProps> = ({
               </FormControl>
             </Grid>
 
-            <Grid item xs={12} md={4}>
+            <Grid item xs={12} md={3}>
               <FormControl fullWidth size="small">
                 <InputLabel>Y-Axis (Vertical)</InputLabel>
                 <Select
@@ -665,7 +833,7 @@ const BubbleChart: React.FC<BubbleChartProps> = ({
               </FormControl>
             </Grid>
 
-            <Grid item xs={12} md={4}>
+            <Grid item xs={12} md={3}>
               <FormControl fullWidth size="small">
                 <InputLabel>Bubble Size</InputLabel>
                 <Select
@@ -673,6 +841,25 @@ const BubbleChart: React.FC<BubbleChartProps> = ({
                   label="Bubble Size"
                   onChange={(e) => setSizeMetric(e.target.value as keyof AirportData)}
                 >
+                  {METRIC_OPTIONS.filter(option => !option.value.includes('Growth')).map(option => (
+                    <MenuItem key={option.value} value={option.value}>
+                      {option.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+
+            <Grid item xs={12} md={3}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Color By</InputLabel>
+                <Select
+                  value={colorMetric}
+                  label="Color By"
+                  onChange={(e) => setColorMetric(e.target.value)}
+                >
+                  <MenuItem value="quadrant">Quadrant</MenuItem>
+                  <MenuItem value="hubSize">Hub Size</MenuItem>
                   {METRIC_OPTIONS.filter(option => !option.value.includes('Growth')).map(option => (
                     <MenuItem key={option.value} value={option.value}>
                       {option.label}
@@ -691,24 +878,58 @@ const BubbleChart: React.FC<BubbleChartProps> = ({
             <Typography variant="body2" sx={{ fontWeight: 600, mr: 1 }}>
               Colors:
             </Typography>
-            {(() => {
-              const uniqueHubSizes = Array.from(new Set(processedData.map(d => d.hubSize))).sort();
-              const hubSizeLabels = {
-                'L': 'Large Hub',
-                'M': 'Medium Hub',
-                'S': 'Small Hub',
-                'N': 'Non-Hub'
-              };
+            {(chartMode === 'explore' && colorMetric === 'quadrant') || (chartMode === 'executive' && EXECUTIVE_VIEWS[executiveView].colorMetric === 'quadrant') ? (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Typography variant="body2" color="text.secondary">
+                  Composite Score (X + Y Position)
+                </Typography>
+                <Box sx={{
+                  width: 200,
+                  height: 20,
+                  background: 'linear-gradient(to right, #fde725, #7ad151, #22a884, #2a788e, #414487, #440154)',
+                  borderRadius: 1,
+                  border: '1px solid rgba(0,0,0,0.1)'
+                }} />
+                <Typography variant="caption" color="text.secondary">
+                  Low → High
+                </Typography>
+              </Box>
+            ) : chartMode === 'explore' && colorMetric !== 'hubSize' ? (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Typography variant="body2" color="text.secondary">
+                  {METRIC_OPTIONS.find(m => m.value === colorMetric)?.label || colorMetric}
+                </Typography>
+                <Box sx={{
+                  width: 200,
+                  height: 20,
+                  background: 'linear-gradient(to right, #fde725, #7ad151, #22a884, #2a788e, #414487, #440154)',
+                  borderRadius: 1,
+                  border: '1px solid rgba(0,0,0,0.1)'
+                }} />
+                <Typography variant="caption" color="text.secondary">
+                  Low → High
+                </Typography>
+              </Box>
+            ) : (
+              (() => {
+                const uniqueHubSizes = Array.from(new Set(filteredData.map(d => d.hubSize))).sort();
+                const hubSizeLabels = {
+                  'L': 'Large Hub',
+                  'M': 'Medium Hub',
+                  'S': 'Small Hub',
+                  'N': 'Non-Hub'
+                };
 
-              return uniqueHubSizes.map(hubSize => (
-                <Chip
-                  key={hubSize}
-                  label={hubSizeLabels[hubSize as keyof typeof hubSizeLabels]}
-                  size="small"
-                  sx={{ backgroundColor: HUB_COLORS[hubSize as keyof typeof HUB_COLORS], color: 'white' }}
-                />
-              ));
-            })()}
+                return uniqueHubSizes.map(hubSize => (
+                  <Chip
+                    key={hubSize}
+                    label={hubSizeLabels[hubSize as keyof typeof hubSizeLabels]}
+                    size="small"
+                    sx={{ backgroundColor: HUB_COLORS[hubSize as keyof typeof HUB_COLORS], color: 'white' }}
+                  />
+                ));
+              })()
+            )}
           </Box>
 
           {/* Size Legend */}
@@ -755,44 +976,11 @@ const BubbleChart: React.FC<BubbleChartProps> = ({
             </Box>
           </Box>
 
-          {/* Quadrant Explanation */}
-          {quadrantMode !== 'off' && (
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center' }}>
-              <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                Quadrants:
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Chart divided by {quadrantMode} values:
-              </Typography>
-              <Box sx={{ display: 'flex', gap: 2 }}>
-                <Typography variant="caption" sx={{
-                  px: 1,
-                  py: 0.5,
-                  backgroundColor: theme.palette.success.light,
-                  borderRadius: 1,
-                  color: 'white',
-                  fontSize: '10px'
-                }}>
-                  Top-Right: High-High
-                </Typography>
-                <Typography variant="caption" sx={{
-                  px: 1,
-                  py: 0.5,
-                  backgroundColor: theme.palette.warning.light,
-                  borderRadius: 1,
-                  color: 'white',
-                  fontSize: '10px'
-                }}>
-                  Other Quadrants
-                </Typography>
-              </Box>
-            </Box>
-          )}
         </Box>
 
         {/* Chart */}
-        <Box sx={{ width: '100%', height: height }}>
-          {processedData.length === 0 ? (
+        <Box sx={{ width: '100%', height: height, position: 'relative' }}>
+          {filteredData.length === 0 ? (
             <Box
               sx={{
                 display: 'flex',
@@ -819,42 +1007,49 @@ const BubbleChart: React.FC<BubbleChartProps> = ({
           ) : (
             <ResponsiveContainer width="100%" height="100%">
               <ScatterChart
-                data={processedData}
-                margin={{ top: 20, right: 20, bottom: 60, left: 60 }}
+                data={filteredData}
+                margin={{ top: 20, right: 20, bottom: 60, left: 80 }}
               >
+                <defs>
+                  <clipPath id="clip-path">
+                    <rect x="0" y="0" width="100%" height="100%" />
+                  </clipPath>
+                </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke={theme.palette.divider} />
                 <XAxis
                   dataKey={xAxis}
                   type="number"
                   name={xOption?.label}
-                  tick={{ fontSize: 11 }}
+                  domain={axisDomains.xDomain}
+                  tick={{ fontSize: 13 }}
                   tickFormatter={(value) => formatValue(value, getMetricFormat(xAxis))}
                   label={{
                     value: xOption?.label,
                     position: 'insideBottom',
                     offset: -40,
-                    style: { textAnchor: 'middle', fontSize: '12px', fontWeight: 600 }
+                    style: { textAnchor: 'middle', fontSize: '13px', fontWeight: 600 }
                   }}
                 />
                 <YAxis
                   dataKey={yAxis}
                   type="number"
                   name={yOption?.label}
-                  tick={{ fontSize: 11 }}
+                  domain={axisDomains.yDomain}
+                  tick={{ fontSize: 13 }}
                   tickFormatter={(value) => formatValue(value, getMetricFormat(yAxis))}
                   label={{
                     value: yOption?.label,
                     angle: -90,
                     position: 'insideLeft',
-                    style: { textAnchor: 'middle', fontSize: '12px', fontWeight: 600 }
+                    offset: -25,
+                    style: { textAnchor: 'middle', fontSize: '13px', fontWeight: 600 }
                   }}
                 />
                 <Tooltip content={<CustomTooltip />} />
 
-                {/* Quadrant Reference Lines */}
+                {/* Quadrant Reference Lines - just the lines */}
                 {quadrantMode !== 'off' && (
                   <>
-                    {/* Lines without labels first (background) */}
                     <ReferenceLine
                       x={xLine}
                       stroke={theme.palette.primary.main}
@@ -867,8 +1062,44 @@ const BubbleChart: React.FC<BubbleChartProps> = ({
                       strokeDasharray="8 4"
                       strokeWidth={2}
                     />
+                  </>
+                )}
 
-                    {/* Labels on top (foreground) with background boxes */}
+                <Scatter
+                  data={filteredData}
+                  fill="#8884d8"
+                  shape={(props: any) => {
+                    const { cx, cy, payload } = props;
+                    const radius = calculateBubbleSize(Number(payload[sizeMetric]));
+                    const isSelected = selectedAirport?.locId === payload.locId;
+                    const isHovered = hoveredAirport === payload.locId;
+
+                    let color = getExecutiveColor(payload);
+                    // Override color for selected airport
+                    if (isSelected) {
+                      color = '#DE8F05'; // Orange
+                    }
+
+                    return (
+                      <circle
+                        cx={cx}
+                        cy={cy}
+                        r={radius}
+                        fill={color}
+                        fillOpacity={isHovered || isSelected ? 0.9 : 0.7}
+                        stroke={isSelected ? '#CC6600' : (isHovered ? '#000' : color)}
+                        strokeWidth={isSelected ? 3 : (isHovered ? 2 : 1)}
+                        style={{ cursor: isHovered ? 'pointer' : 'default' }}
+                        onMouseEnter={() => setHoveredAirport(payload.locId)}
+                        onMouseLeave={() => setHoveredAirport(null)}
+                      />
+                    );
+                  }}
+                />
+
+                {/* Quadrant Reference Line Labels - rendered after scatter to appear on top */}
+                {quadrantMode !== 'off' && (
+                  <>
                     <ReferenceLine
                       x={xLine}
                       stroke="transparent"
@@ -876,28 +1107,28 @@ const BubbleChart: React.FC<BubbleChartProps> = ({
                       label={(props: any) => {
                         const { viewBox } = props;
                         const text = formatValue(xLine, getMetricFormat(xAxis));
-                        const x = viewBox.x + viewBox.width / 2;
-                        const y = xLabelStrategy === 'top'
-                          ? viewBox.y + 40
-                          : viewBox.y + viewBox.height - 40;
+                        const labelX = viewBox.x + viewBox.width / 2;
+                        const labelY = xLabelStrategy === 'top'
+                          ? viewBox.y + 35
+                          : viewBox.y + viewBox.height - 35;
 
                         return (
                           <g>
                             <rect
-                              x={x - 30}
-                              y={y - 10}
-                              width={60}
-                              height={20}
+                              x={labelX - 35}
+                              y={labelY - 12}
+                              width={70}
+                              height={24}
                               fill="white"
                               stroke={theme.palette.primary.light}
                               strokeWidth={1}
                               rx={4}
                             />
                             <text
-                              x={x}
-                              y={y + 4}
+                              x={labelX}
+                              y={labelY + 5}
                               textAnchor="middle"
-                              fontSize={14}
+                              fontSize={13}
                               fontWeight={600}
                               fill={theme.palette.primary.main}
                             >
@@ -914,28 +1145,33 @@ const BubbleChart: React.FC<BubbleChartProps> = ({
                       label={(props: any) => {
                         const { viewBox } = props;
                         const text = formatValue(yLine, getMetricFormat(yAxis));
-                        const x = yLabelStrategy === 'left'
-                          ? viewBox.x + 120
-                          : viewBox.x + viewBox.width - 120;
-                        const y = viewBox.y + viewBox.height / 2;
+                        // Always place at least 25% into the chart to avoid y-axis overlap
+                        const chartWidth = viewBox.width;
+                        let labelX;
+                        if (yLabelStrategy === 'left') {
+                          labelX = viewBox.x + Math.max(chartWidth * 0.25, 150);
+                        } else {
+                          labelX = viewBox.x + Math.min(chartWidth * 0.75, chartWidth - 150);
+                        }
+                        const labelY = viewBox.y;
 
                         return (
                           <g>
                             <rect
-                              x={x - 30}
-                              y={y - 10}
-                              width={60}
-                              height={20}
+                              x={labelX - 35}
+                              y={labelY - 12}
+                              width={70}
+                              height={24}
                               fill="white"
                               stroke={theme.palette.primary.light}
                               strokeWidth={1}
                               rx={4}
                             />
                             <text
-                              x={x}
-                              y={y + 4}
+                              x={labelX}
+                              y={labelY + 5}
                               textAnchor="middle"
-                              fontSize={14}
+                              fontSize={13}
                               fontWeight={600}
                               fill={theme.palette.primary.main}
                             >
@@ -947,28 +1183,6 @@ const BubbleChart: React.FC<BubbleChartProps> = ({
                     />
                   </>
                 )}
-
-                <Scatter
-                  data={processedData}
-                  fill="#8884d8"
-                  shape={(props: any) => {
-                    const { cx, cy, payload } = props;
-                    const radius = calculateBubbleSize(Number(payload[sizeMetric]));
-                    const color = getExecutiveColor(payload);
-
-                    return (
-                      <circle
-                        cx={cx}
-                        cy={cy}
-                        r={radius}
-                        fill={color}
-                        fillOpacity={0.7}
-                        stroke={color}
-                        strokeWidth={1}
-                      />
-                    );
-                  }}
-                />
               </ScatterChart>
             </ResponsiveContainer>
           )}

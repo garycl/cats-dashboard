@@ -72,18 +72,45 @@ const SankeyChart: React.FC<SankeyChartProps> = ({
   data,
   title = 'Airport Fund Flow',
   height = 520,
-  width = 980
+  width
 }) => {
   const theme = useTheme();
   const svgRef = useRef<SVGSVGElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [mode, setMode] = React.useState<ChartMode>('revenue');
   const [revenueMode, setRevenueMode] = React.useState<RevenueMode>('all');
   const [legendItems, setLegendItems] = React.useState<ChartLegendItem[]>([]);
+  const [containerWidth, setContainerWidth] = React.useState(width || 980);
 
+  // Update width based on container size
+  useEffect(() => {
+    const updateWidth = () => {
+      if (containerRef.current) {
+        const newWidth = containerRef.current.offsetWidth;
+        if (newWidth > 0) {
+          setContainerWidth(width || newWidth);
+        }
+      }
+    };
 
+    // Set initial width with a slight delay to ensure container is rendered
+    const timer = setTimeout(updateWidth, 0);
+
+    // Update on resize
+    if (!width) {
+      window.addEventListener('resize', updateWidth);
+    }
+
+    return () => {
+      clearTimeout(timer);
+      if (!width) {
+        window.removeEventListener('resize', updateWidth);
+      }
+    };
+  }, [width]);
 
   useEffect(() => {
-    if (!data || !svgRef.current) return;
+    if (!data || !svgRef.current || containerWidth === 0) return;
 
     d3.select(svgRef.current).selectAll('*').remove();
 
@@ -455,9 +482,9 @@ const SankeyChart: React.FC<SankeyChartProps> = ({
     const generator = sankey<FlowNodeDatum, FlowLinkDatum>()
       .nodeId(node => node.id)
       .nodeWidth(mode === 'revenue' ? 14 : 22)
-      .nodePadding(mode === 'revenue' ? (revenueMode === 'all' ? 50 : 20) : 32)
+      .nodePadding(mode === 'revenue' ? (revenueMode === 'all' ? 40 : 20) : 25)
       .nodeAlign(sankeyJustify)
-      .extent([[120, 64], [width - 140, adjustedHeight - 110]]);
+      .extent([[100, 40], [containerWidth - 80, adjustedHeight - 40]]);
 
     const graph = generator({
       nodes: nodes.map(node => ({ ...node })),
@@ -466,10 +493,10 @@ const SankeyChart: React.FC<SankeyChartProps> = ({
 
     const svg = d3
       .select(svgRef.current)
-      .attr('width', width)
+      .attr('width', containerWidth)
       .attr('height', adjustedHeight)
       .style('font-family', theme.typography.fontFamily || 'sans-serif')
-      .style('font-size', '13px');
+      .style('font-size', '15px');
 
     svg
       .append('g')
@@ -573,7 +600,7 @@ const SankeyChart: React.FC<SankeyChartProps> = ({
           .text(line);
       });
     });
-  }, [data, height, width, theme, mode, revenueMode]);
+  }, [data, height, containerWidth, theme, mode, revenueMode]);
 
   return (
     <Card sx={{ height: '100%' }}>
@@ -626,7 +653,7 @@ const SankeyChart: React.FC<SankeyChartProps> = ({
           </Box>
         </Box>
 
-        <Box sx={{ width: '100%', height: mode === 'revenue' && revenueMode === 'all' ? height + 100 : height, overflow: 'hidden' }}>
+        <Box ref={containerRef} sx={{ width: '100%', height: mode === 'revenue' && revenueMode === 'all' ? height + 100 : height, overflow: 'hidden' }}>
           <svg ref={svgRef} />
         </Box>
 

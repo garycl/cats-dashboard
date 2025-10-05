@@ -8,8 +8,26 @@ export const formatCurrency = (value: number): string => {
     style: 'currency',
     currency: 'USD',
     notation: 'compact',
+    minimumFractionDigits: 1,
     maximumFractionDigits: 1,
   }).format(value);
+};
+
+/**
+ * Format cost per enplanement with special handling for very small values
+ */
+export const formatCostPerEnplanement = (value: number): string => {
+  // For very small values (> 0 but < 0.005), show 2 decimals to avoid rounding to $0.0
+  if (value > 0 && value < 0.005) {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(value);
+  }
+  // Otherwise use standard compact notation
+  return formatCurrency(value);
 };
 
 /**
@@ -18,6 +36,7 @@ export const formatCurrency = (value: number): string => {
 export const formatNumber = (value: number): string => {
   return new Intl.NumberFormat('en-US', {
     notation: 'compact',
+    minimumFractionDigits: 1,
     maximumFractionDigits: 1,
   }).format(value);
 };
@@ -72,10 +91,17 @@ export const getMetricLabel = (metricKey: string): string => {
   const metricLabels: Record<string, string> = {
     'totalOperatingRevenue': 'Total Operating Revenue',
     'enplanements': 'Enplanements',
-    'annualAircraftOperations': 'Aircraft Operations',
-    'operatingMargin': 'Operating Margin %',
+    'annualAircraftOperations': 'Annual Aircraft Operations',
+    'operatingMargin': 'Operating Margin',
     'costPerEnplanement': 'Cost Per Enplanement',
-    'unrestrictedCashAndInvestments': 'Unrestricted Cash'
+    'unrestrictedCashAndInvestments': 'Unrestricted Cash',
+    'fullTimeEquivalentEmployees': 'Full-Time Equivalent Employees',
+    'signatoryLandingFeeRatePer1000Lbs': 'Landing Fee Rate (per 1,000 lbs)',
+    'aero_rev_per_enpl': 'Aeronautical Revenue Per Enplanement',
+    'nonaero_per_enpl': 'Non-Aeronautical Revenue Per Enplanement',
+    'op_rev_per_enpl': 'Total Operating Revenue Per Enplanement',
+    'days_cash_on_hand': 'Days Cash on Hand',
+    'lt_debt_per_enpl': 'Long-Term Debt Per Enplanement'
   };
   return metricLabels[metricKey] || metricKey;
 };
@@ -88,9 +114,16 @@ export const mapMetricToAirportMap = (metric: string): string => {
     'totalOperatingRevenue': 'totalOperatingRevenue',
     'enplanements': 'enplanements',
     'annualAircraftOperations': 'annualAircraftOperations',
+    'fullTimeEquivalentEmployees': 'fullTimeEquivalentEmployees',
     'operatingMargin': 'operatingMargin',
     'costPerEnplanement': 'costPerEnplanement',
-    'unrestrictedCashAndInvestments': 'unrestrictedCashAndInvestments'
+    'unrestrictedCashAndInvestments': 'unrestrictedCashAndInvestments',
+    'signatoryLandingFeeRatePer1000Lbs': 'signatoryLandingFeeRatePer1000Lbs',
+    'aero_rev_per_enpl': 'aero_rev_per_enpl',
+    'nonaero_per_enpl': 'nonaero_per_enpl',
+    'op_rev_per_enpl': 'op_rev_per_enpl',
+    'days_cash_on_hand': 'days_cash_on_hand',
+    'lt_debt_per_enpl': 'lt_debt_per_enpl'
   };
   return mapping[metric] || 'totalOperatingRevenue';
 };

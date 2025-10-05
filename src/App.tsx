@@ -10,6 +10,7 @@ import Sidebar from './components/Layout/Sidebar';
 const Home = React.lazy(() => import('./pages/Home'));
 const ExecutiveOverview = React.lazy(() => import('./pages/ExecutiveOverview'));
 const AirportComparison = React.lazy(() => import('./pages/AirportComparison'));
+const PerformanceTrends = React.lazy(() => import('./pages/PerformanceTrends'));
 
 // Hooks and Context
 import { DataProvider } from './context/DataContext';
@@ -67,6 +68,7 @@ const App: React.FC = () => {
                 <Route path="/" element={<Home />} />
                 <Route path="/executive-overview" element={<ExecutiveOverview />} />
                 <Route path="/airport-comparison" element={<AirportComparison />} />
+                <Route path="/performance-trends" element={<PerformanceTrends />} />
               </Routes>
             </Suspense>
           </Box>

@@ -16,7 +16,7 @@ import {
   Home,
   Dashboard,
   Compare,
-  Business,
+  TrendingUp,
   ChevronLeft,
   ChevronRight,
   Flight,
@@ -32,6 +32,7 @@ const navigationItems = [
   { text: 'Home', icon: <Home />, path: '/' },
   { text: 'Executive Overview', icon: <Dashboard />, path: '/executive-overview' },
   { text: 'Airport Performance', icon: <Compare />, path: '/airport-comparison' },
+  { text: 'Performance Trends', icon: <TrendingUp />, path: '/performance-trends' },
 ];
 
 const Sidebar: React.FC<SidebarProps> = ({ open, onToggle }) => {
@@ -52,7 +53,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onToggle }) => {
         '& .MuiDrawer-paper': {
           width: open ? 240 : 80,
           boxSizing: 'border-box',
-          backgroundColor: theme.palette.primary.main,
+          backgroundColor: '#0a1929', // Dark navy (closer to Industry Snapshot text)
           color: 'white',
           transition: 'width 0.3s ease',
           overflowX: 'hidden',

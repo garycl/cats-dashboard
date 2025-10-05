@@ -105,7 +105,11 @@ const CustomRadarChart: React.FC<RadarChartProps> = ({
 
         <Box sx={{ width: '100%', height }}>
           <ResponsiveContainer width="100%" height="100%">
-            <RadarChart data={data} margin={{ top: 60, right: 60, bottom: 60, left: 60 }} outerRadius="70%">
+            <RadarChart
+              data={data}
+              margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
+              outerRadius="85%"
+            >
               <PolarGrid
                 stroke={theme.palette.divider}
                 strokeWidth={1}
@@ -113,18 +117,20 @@ const CustomRadarChart: React.FC<RadarChartProps> = ({
               <PolarAngleAxis
                 dataKey="metric"
                 tick={{
-                  fontSize: 11,
+                  fontSize: 13,
                   fill: theme.palette.text.primary,
                   fontWeight: 600,
                 }}
+                tickSize={17}
                 className="recharts-polar-angle-axis-tick"
                 tickFormatter={(value) => value}
               />
               <PolarRadiusAxis
                 angle={90}
-                domain={[0, 200]}
+                domain={[0, 100]}
+                ticks={[25, 50, 75, 100]}
                 tick={{
-                  fontSize: 10,
+                  fontSize: 13,
                   fill: theme.palette.text.secondary
                 }}
                 strokeWidth={0}
@@ -190,10 +196,12 @@ const CustomRadarChart: React.FC<RadarChartProps> = ({
                 }}
               />
               <Legend
+                verticalAlign="bottom"
                 wrapperStyle={{
                   color: theme.palette.text.primary,
                   fontSize: '14px',
                   fontWeight: 500,
+                  paddingTop: '75px',
                 }}
               />
             </RadarChart>

@@ -23,8 +23,8 @@ import {
   TrendingUp,
   Place,
 } from '@mui/icons-material';
-import { AirportData } from '../../context/DataContext';
-import { formatCurrency, formatNumber } from '../../utils/formatters';
+import { AirportData, useData } from '../../context/DataContext';
+import { formatCurrency, formatNumber, formatCostPerEnplanement } from '../../utils/formatters';
 
 // Use CartoDB Dark with 2x resolution for crisp labels
 const MAP_STYLE = {
@@ -81,6 +81,9 @@ const hubColors = {
   default: '#fde725' // Default - Yellow
 } as const;
 
+// Highlight color for selected airport (bright yellow - highly visible against green/red)
+const HIGHLIGHT_COLOR = '#FFD700';  // Gold/Yellow - stands out against red/green palette
+
 type MetricOption = {
   value: string;
   label: string;
@@ -91,15 +94,23 @@ type MetricOption = {
 
 const metricOptions: MetricOption[] = [
   { value: 'enplanements', label: 'Enplanements', format: 'number', better: 'higher' },
-  { value: 'totalOperatingRevenue', label: 'Total Operating Revenue', format: 'currency', better: 'higher' },
+  { value: 'totalOperatingRevenue', label: 'Operating Revenue', format: 'currency', better: 'higher' },
   { value: 'annualAircraftOperations', label: 'Aircraft Operations', format: 'number', better: 'higher' },
-  { value: 'operatingMargin', label: 'Operating Margin %', format: 'number', better: 'higher' },
+  { value: 'fullTimeEquivalentEmployees', label: 'FTE Employees', format: 'number', better: 'higher' },
+  { value: 'operatingMargin', label: 'Operating Margin (%)', format: 'number', better: 'higher' },
   { value: 'costPerEnplanement', label: 'Cost Per Enplanement', format: 'currency', better: 'lower' },
-  { value: 'unrestrictedCashAndInvestments', label: 'Unrestricted Cash', format: 'currency', better: 'higher' }
+  { value: 'unrestrictedCashAndInvestments', label: 'Unrestricted Cash', format: 'currency', better: 'higher' },
+  { value: 'signatoryLandingFeeRatePer1000Lbs', label: 'Landing Fee Rate', format: 'currency', better: 'lower' },
+  { value: 'aero_rev_per_enpl', label: 'Aero Revenue/Enpl', format: 'currency', better: 'higher' },
+  { value: 'nonaero_per_enpl', label: 'Non-Aero Revenue/Enpl', format: 'currency', better: 'higher' },
+  { value: 'op_rev_per_enpl', label: 'Operating Revenue/Enpl', format: 'currency', better: 'higher' },
+  { value: 'days_cash_on_hand', label: 'Days Cash on Hand', format: 'number', better: 'higher' },
+  { value: 'lt_debt_per_enpl', label: 'LT Debt/Enpl', format: 'currency', better: 'lower' }
 ];
 
 const AirportMap: React.FC<AirportMapProps> = ({ airports, allAirports, height = 600, selectedMetric: externalMetric, showGrowthRate = false, onGrowthRateChange, externalHubSizeFilter, selectedYear, showBenchmark = true, onBenchmarkChange }) => {
   const theme = useTheme();
+  const { selectedAirport } = useData();
   const [popupAirportId, setPopupAirportId] = React.useState<string | null>(null);
 
   // Use external hub size filter if provided, otherwise use internal state
@@ -149,11 +160,33 @@ const AirportMap: React.FC<AirportMapProps> = ({ airports, allAirports, height =
     if (hubSizeFilter === 'All') {
       return uniqueAirports;
     }
-    return uniqueAirports.filter(airport => airport.hubSize === hubSizeFilter);
+    // Support comma-separated hub sizes from external filter
+    const hubSizes = hubSizeFilter.split(',');
+    return uniqueAirports.filter(airport => hubSizes.includes(airport.hubSize));
   }, [uniqueAirports, hubSizeFilter]);
 
   const getMetricValue = useCallback((airport: AirportData, key: string): number => {
-    return Number(airport[key as keyof AirportData] ?? 0);
+    if (!airport) return 0;
+
+    switch (key) {
+      case 'aero_rev_per_enpl':
+        return airport.enplanements > 0 ? (airport.totalAeronauticalRevenue || 0) / airport.enplanements : 0;
+
+      case 'nonaero_per_enpl':
+        return airport.enplanements > 0 ? (airport.totalNonAeronauticalRevenue || 0) / airport.enplanements : 0;
+
+      case 'op_rev_per_enpl':
+        return airport.enplanements > 0 ? (airport.totalOperatingRevenue || 0) / airport.enplanements : 0;
+
+      case 'days_cash_on_hand':
+        return airport.totalOperatingExpenses > 0 ? ((airport.unrestrictedCashAndInvestments || 0) * 365) / airport.totalOperatingExpenses : 0;
+
+      case 'lt_debt_per_enpl':
+        return airport.enplanements > 0 ? (airport.totalDebt || 0) / airport.enplanements : 0;
+
+      default:
+        return Number(airport[key as keyof AirportData] ?? 0);
+    }
   }, []);
 
   const computeAverage = (values: number[]): number => {
@@ -176,8 +209,9 @@ const AirportMap: React.FC<AirportMapProps> = ({ airports, allAirports, height =
 
         // Filter by hub size if not 'All'
         if (hubSizeFilter !== 'All') {
-          currentYearData = currentYearData.filter(d => d.hubSize === hubSizeFilter);
-          previousYearData = previousYearData.filter(d => d.hubSize === hubSizeFilter);
+          const hubSizes = hubSizeFilter.split(',');
+          currentYearData = currentYearData.filter(d => hubSizes.includes(d.hubSize));
+          previousYearData = previousYearData.filter(d => hubSizes.includes(d.hubSize));
         }
 
         const growthRates = currentYearData
@@ -205,8 +239,11 @@ const AirportMap: React.FC<AirportMapProps> = ({ airports, allAirports, height =
           const dataForThreshold = allAirports || airports;
           const latestYear = Math.max(...dataForThreshold.map(a => a.fiscalYear));
           const currentYearAirports = dataForThreshold.filter(a => a.fiscalYear === latestYear);
-          const airportsForThreshold = hubSizeFilter === 'All' ? currentYearAirports :
-            currentYearAirports.filter(airport => airport.hubSize === hubSizeFilter);
+          let airportsForThreshold = currentYearAirports;
+          if (hubSizeFilter !== 'All') {
+            const hubSizes = hubSizeFilter.split(',');
+            airportsForThreshold = currentYearAirports.filter(airport => hubSizes.includes(airport.hubSize));
+          }
 
           const values = airportsForThreshold
             .map(airport => getMetricValue(airport, option.value))
@@ -268,6 +305,9 @@ const AirportMap: React.FC<AirportMapProps> = ({ airports, allAirports, height =
       }
     }
 
+    // Check if this is the selected airport
+    const isSelected = selectedAirport === airport.locId;
+
     let size = 12;
     switch (hubSize) {
       case 'L':
@@ -288,10 +328,10 @@ const AirportMap: React.FC<AirportMapProps> = ({ airports, allAirports, height =
 
     return {
       size,
-      color: isPositive ? '#1cc88a' : '#e74a3b',
+      color: isSelected ? HIGHLIGHT_COLOR : (isPositive ? '#1cc88a' : '#e74a3b'),
       value,
     };
-  }, [getMetricValue, metricThresholds, showGrowthRate, airports, allAirports, selectedYear, showBenchmark]);
+  }, [getMetricValue, metricThresholds, showGrowthRate, airports, allAirports, selectedYear, showBenchmark, selectedAirport]);
 
 
   const getHubSizeLabel = (hubSize: string): string => {
@@ -309,22 +349,28 @@ const AirportMap: React.FC<AirportMapProps> = ({ airports, allAirports, height =
   };
 
   const formatMetricDisplay = useCallback((value: number, option: MetricOption): string => {
-    switch (option.value) {
-      case 'enplanements':
-        return formatNumber(value);
-      case 'totalOperatingRevenue':
-        return formatCurrency(value);
-      case 'annualAircraftOperations':
-        return formatNumber(value);
-      case 'operatingMargin':
-        return `${(value * 100).toFixed(1)}%`;
-      case 'costPerEnplanement':
-        return formatCurrency(value);
-      case 'unrestrictedCashAndInvestments':
-        return formatCurrency(value);
-      default:
-        return option.format === 'currency' ? formatCurrency(value) : formatNumber(value);
+    // Currency metrics (per enplanement, landing fees, CPE)
+    const currencyMetrics = ['costPerEnplanement', 'signatoryLandingFeeRatePer1000Lbs', 'totalOperatingRevenue',
+                             'unrestrictedCashAndInvestments', 'aero_rev_per_enpl', 'nonaero_per_enpl',
+                             'op_rev_per_enpl', 'lt_debt_per_enpl'];
+    // Percentage metrics
+    const percentageMetrics = ['operatingMargin'];
+    // Integer metrics (no decimals)
+    const integerMetrics = ['fullTimeEquivalentEmployees'];
+
+    if (percentageMetrics.includes(option.value)) {
+      return `${(value * 100).toFixed(1)}%`;
     }
+    if (option.value === 'costPerEnplanement') {
+      return formatCostPerEnplanement(value);
+    }
+    if (currencyMetrics.includes(option.value)) {
+      return formatCurrency(value);
+    }
+    if (integerMetrics.includes(option.value)) {
+      return Math.round(value).toLocaleString('en-US');
+    }
+    return formatNumber(value);
   }, []);
 
   const selectedOption = useMemo(() => {
@@ -409,7 +455,7 @@ const AirportMap: React.FC<AirportMapProps> = ({ airports, allAirports, height =
         mapStyle={MAP_STYLE}
       >
         {/* Toggles - Top Left */}
-        {(onGrowthRateChange || onBenchmarkChange) && (
+        {onBenchmarkChange && (
           <Box sx={{ position: 'absolute', top: 16, left: 16, zIndex: 5 }}>
             <Paper sx={{
               p: 1.5,
@@ -419,51 +465,26 @@ const AirportMap: React.FC<AirportMapProps> = ({ airports, allAirports, height =
               backdropFilter: 'blur(10px)'
             }}>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                {onGrowthRateChange && (
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={showGrowthRate}
-                        onChange={(e) => onGrowthRateChange(e.target.checked)}
-                        size="small"
-                        sx={{
-                          '& .MuiSwitch-switchBase.Mui-checked': {
-                            color: theme.palette.primary.main,
-                          },
-                          '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                            backgroundColor: theme.palette.primary.main,
-                          },
-                        }}
-                      />
-                    }
-                    label={
-                      <Typography variant="body2" sx={{ fontWeight: 600, color: 'rgba(0, 0, 0, 0.8)' }}>
-                        Growth Rate
-                      </Typography>
-                    }
-                    sx={{ margin: 0 }}
-                  />
-                )}
                 {onBenchmarkChange && (
                   <FormControlLabel
                     control={
                       <Switch
                         checked={showBenchmark}
-                        onChange={(e) => onBenchmarkChange(e.target.checked)}
+                        onChange={(e) => onBenchmarkChange?.(e.target.checked)}
                         size="small"
                         sx={{
                           '& .MuiSwitch-switchBase.Mui-checked': {
-                            color: theme.palette.secondary.main,
+                            color: theme.palette.success.main,
                           },
                           '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                            backgroundColor: theme.palette.secondary.main,
+                            backgroundColor: theme.palette.success.main,
                           },
                         }}
                       />
                     }
                     label={
                       <Typography variant="body2" sx={{ fontWeight: 600, color: 'rgba(0, 0, 0, 0.8)' }}>
-                        Compare with Benchmark
+                        Industry Benchmark
                       </Typography>
                     }
                     sx={{ margin: 0 }}
@@ -499,7 +520,17 @@ const AirportMap: React.FC<AirportMapProps> = ({ airports, allAirports, height =
                   <>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                       <Typography variant="body2" sx={{ fontWeight: 600, color: 'rgba(0, 0, 0, 0.8)' }}>
-                        {hubSizeFilter === 'All' ? 'Industry Average' : `${hubSizeFilter === 'L' ? 'Large Hub' : hubSizeFilter === 'M' ? 'Medium Hub' : hubSizeFilter === 'S' ? 'Small Hub' : 'Non-Hub'} Average`}:
+                        {(() => {
+                          if (hubSizeFilter === 'All') return 'Industry Average';
+                          const hubSizes = hubSizeFilter.split(',');
+                          if (hubSizes.length > 1) {
+                            const labels = hubSizes.map(h =>
+                              h === 'L' ? 'L' : h === 'M' ? 'M' : h === 'S' ? 'S' : 'N'
+                            );
+                            return `${labels.join(', ')} Hubs Average`;
+                          }
+                          return `${hubSizeFilter === 'L' ? 'Large Hub' : hubSizeFilter === 'M' ? 'Medium Hub' : hubSizeFilter === 'S' ? 'Small Hub' : 'Non-Hub'} Average`;
+                        })()}:
                       </Typography>
                       <Typography variant="body2" sx={{ fontWeight: 600, color: 'rgba(0, 0, 0, 0.9)' }}>
                         {showGrowthRate
@@ -616,8 +647,43 @@ const AirportMap: React.FC<AirportMapProps> = ({ airports, allAirports, height =
             closeOnClick={false}
             maxWidth="320px"
             offset={[0, -20]}
+            className={showBenchmark ? (() => {
+              const airportValue = getMetricValue(popupInfo, selectedOption.value);
+              const benchmarkValue = metricThresholds[selectedOption.value] || 0;
+              const isAbove = selectedOption.better === 'higher'
+                ? airportValue >= benchmarkValue
+                : airportValue <= benchmarkValue;
+              return isAbove ? 'popup-above-benchmark' : 'popup-below-benchmark';
+            })() : ''}
+            style={{
+              ...(showBenchmark && (() => {
+                const airportValue = getMetricValue(popupInfo, selectedOption.value);
+                const benchmarkValue = metricThresholds[selectedOption.value] || 0;
+                const isAbove = selectedOption.better === 'higher'
+                  ? airportValue >= benchmarkValue
+                  : airportValue <= benchmarkValue;
+                const color = isAbove ? '#1cc88a' : '#e74a3b';
+                return {
+                  '--popup-bg-color': color
+                };
+              })())
+            } as any}
           >
-            <Paper sx={{ p: 1.5, minWidth: 240 }}>
+            <Paper sx={{
+              p: 1.5,
+              minWidth: 240,
+              ...(showBenchmark && (() => {
+                const airportValue = getMetricValue(popupInfo, selectedOption.value);
+                const benchmarkValue = metricThresholds[selectedOption.value] || 0;
+                const isAbove = selectedOption.better === 'higher'
+                  ? airportValue >= benchmarkValue
+                  : airportValue <= benchmarkValue;
+                const color = isAbove ? '#1cc88a' : '#e74a3b';
+                return {
+                  boxShadow: `0 0 0 4px ${color}44, 0 4px 12px rgba(0,0,0,0.2)`
+                };
+              })())
+            }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                 <Flight sx={{ color: theme.palette.primary.main }} fontSize="small" />
                 <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
@@ -647,20 +713,61 @@ const AirportMap: React.FC<AirportMapProps> = ({ airports, allAirports, height =
               <Divider sx={{ my: 1.5 }} />
 
               <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                {selectedOption.value !== 'enplanements' && (
+                  <Chip
+                    label={`${formatNumber(popupInfo.enplanements)} PAX`}
+                    size="small"
+                    variant="outlined"
+                    icon={<People fontSize="inherit" />}
+                    sx={{ fontWeight: 500 }}
+                  />
+                )}
                 <Chip
-                  label={`${formatNumber(popupInfo.enplanements)} PAX`}
-                  size="small"
-                  variant="outlined"
-                  icon={<People fontSize="inherit" />}
-                  sx={{ fontWeight: 500 }}
-                />
-                <Chip
-                  label={`${selectedOption.label}: ${formatMetricDisplay(getMetricValue(popupInfo, selectedOption.value), selectedOption)}`}
+                  label={(() => {
+                    if (showGrowthRate) {
+                      // Calculate growth rate
+                      const dataForGrowth = allAirports || airports;
+                      const currentYear = selectedYear || Math.max(...dataForGrowth.map(a => a.fiscalYear));
+                      const previousYear = currentYear - 1;
+                      const previousYearData = dataForGrowth.filter(d => d.fiscalYear === previousYear);
+                      const previous = previousYearData.find(p => p.locId === popupInfo.locId);
+
+                      if (!previous) return `${selectedOption.label}: N/A`;
+
+                      const currentValue = getMetricValue(popupInfo, selectedOption.value);
+                      const previousValue = getMetricValue(previous, selectedOption.value);
+
+                      if (previousValue <= 0 || currentValue < 0) return `${selectedOption.label}: N/A`;
+
+                      const growthRate = ((currentValue - previousValue) / previousValue) * 100;
+                      return `${selectedOption.label}: ${growthRate >= 0 ? '+' : ''}${growthRate.toFixed(1)}%`;
+                    }
+                    return `${selectedOption.label}: ${formatMetricDisplay(getMetricValue(popupInfo, selectedOption.value), selectedOption)}`;
+                  })()}
                   size="small"
                   variant="outlined"
                   icon={<TrendingUp fontSize="inherit" />}
                   sx={{ fontWeight: 500 }}
                 />
+                {showBenchmark && (() => {
+                  const airportValue = getMetricValue(popupInfo, selectedOption.value);
+                  const benchmarkValue = metricThresholds[selectedOption.value] || 0;
+                  const isAbove = selectedOption.better === 'higher'
+                    ? airportValue >= benchmarkValue
+                    : airportValue <= benchmarkValue;
+                  return (
+                    <Chip
+                      label={isAbove ? 'Above Benchmark' : 'Below Benchmark'}
+                      size="small"
+                      variant="filled"
+                      sx={{
+                        fontWeight: 600,
+                        backgroundColor: isAbove ? '#1cc88a' : '#e74a3b',
+                        color: 'white'
+                      }}
+                    />
+                  );
+                })()}
               </Stack>
             </Paper>
           </Popup>

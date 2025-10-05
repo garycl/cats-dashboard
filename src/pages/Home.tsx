@@ -117,7 +117,7 @@ const Home: React.FC = () => {
       {/* Hero Section */}
       <Box
         sx={{
-          background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+          background: 'linear-gradient(135deg, #0a1929 0%, #001529 100%)', // Dark navy gradient matching sidebar
           color: 'white',
           py: 8,
           position: 'relative',

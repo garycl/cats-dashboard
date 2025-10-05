@@ -329,7 +329,7 @@ const Overview: React.FC = () => {
 
       {/* Analytics Section */}
       <Grid container spacing={4}>
-        {/* Top Performers */}
+        {/* Performance Rankings */}
         <Grid item xs={12}>
           <Paper sx={{ p: 3 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3, flexWrap: 'wrap', gap: 2 }}>
@@ -347,7 +347,7 @@ const Overview: React.FC = () => {
                   <MenuItem value="totalOperatingRevenue">Total Operating Revenue</MenuItem>
                   <MenuItem value="enplanements">Enplanements</MenuItem>
                   <MenuItem value="annualAircraftOperations">Aircraft Operations</MenuItem>
-                  <MenuItem value="operatingMargin">Operating Margin %</MenuItem>
+                  <MenuItem value="operatingMargin">Operating Margin (%)</MenuItem>
                   <MenuItem value="costPerEnplanement">Cost Per Enplanement</MenuItem>
                   <MenuItem value="unrestrictedCashAndInvestments">Unrestricted Cash</MenuItem>
                 </Select>

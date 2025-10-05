@@ -170,7 +170,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Filter states
   const [selectedYears, setSelectedYears] = useState<number[]>([]);
   const [selectedStates, setSelectedStates] = useState<string[]>([]);
-  const [selectedHubSizes, setSelectedHubSizes] = useState<string[]>([]);
+  const [selectedHubSizes, setSelectedHubSizes] = useState<string[]>(['L', 'M', 'S']);
   const [selectedAirport, setSelectedAirport] = useState<string | null>(null);
 
   // Load data on mount with progressive loading

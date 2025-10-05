@@ -31,6 +31,37 @@
       #root {
         min-height: 100vh;
       }
+
+      /* Mapbox popup benchmark styling */
+      .popup-above-benchmark .mapboxgl-popup-content,
+      .popup-above-benchmark .maplibregl-popup-content {
+        background-color: #1cc88a !important;
+        padding: 4px;
+        border-radius: 12px !important;
+      }
+
+      .popup-below-benchmark .mapboxgl-popup-content,
+      .popup-below-benchmark .maplibregl-popup-content {
+        background-color: #e74a3b !important;
+        padding: 4px;
+        border-radius: 12px !important;
+      }
+
+      /* Round corners for all popups */
+      .mapboxgl-popup-content,
+      .maplibregl-popup-content {
+        border-radius: 12px !important;
+      }
+
+      .popup-above-benchmark .mapboxgl-popup-tip,
+      .popup-above-benchmark .maplibregl-popup-tip {
+        border-top-color: #1cc88a !important;
+      }
+
+      .popup-below-benchmark .mapboxgl-popup-tip,
+      .popup-below-benchmark .maplibregl-popup-tip {
+        border-top-color: #e74a3b !important;
+      }
     </style>
   </head>
   <body>
