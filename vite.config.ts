@@ -24,10 +24,7 @@ export default defineConfig({
             '@emotion/styled'
           ],
           'charts-vendor': ['d3', 'd3-sankey', 'recharts'],
-          'maps-vendor': ['maplibre-gl', 'react-map-gl'],
-          // Large individual components
-          'airport-map': ['./src/components/Maps/AirportMap.tsx'],
-          'benchmarking': ['./src/pages/Benchmarking.tsx']
+          'maps-vendor': ['maplibre-gl', 'react-map-gl']
         }
       }
     }
