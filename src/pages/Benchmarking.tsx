@@ -50,7 +50,7 @@ import {
 import CustomRadarChart from '../components/Charts/RadarChart';
 import SankeyChart from '../components/Charts/SankeyChart';
 
-const AirportComparison: React.FC = () => {
+const Benchmarking: React.FC = () => {
   const theme = useTheme();
   const { data, loading, getLatestYear, getAvailableYears, filteredData, selectedYears, setSelectedYears, selectedAirport, selectedStates, selectedHubSizes } = useData();
 
@@ -1058,4 +1058,4 @@ const AirportComparison: React.FC = () => {
   );
 };
 
-export default AirportComparison;
+export default Benchmarking;

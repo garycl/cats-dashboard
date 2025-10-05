@@ -32,7 +32,7 @@ import {
 import { useData } from '../context/DataContext';
 import { formatCurrency, formatNumber, formatPercentage, formatCostPerEnplanement } from '../utils/formatters';
 
-const PerformanceTrends: React.FC = () => {
+const TrendTracking: React.FC = () => {
   const theme = useTheme();
   const { data, loading, selectedAirport, selectedStates, selectedHubSizes } = useData();
 
@@ -562,4 +562,4 @@ const PerformanceTrends: React.FC = () => {
   );
 };
 
-export default PerformanceTrends;
+export default TrendTracking;

@@ -89,7 +89,7 @@ const MapLoader: React.FC = () => (
   </Box>
 );
 
-const ExecutiveOverview: React.FC = () => {
+const ExecutiveIntelligence: React.FC = () => {
   const theme = useTheme();
   const { data, loading, filteredData, selectedYears, setSelectedYears, getAvailableYears, selectedHubSizes, selectedAirport } = useData();
 
@@ -1316,4 +1316,4 @@ const ExecutiveOverview: React.FC = () => {
   );
 };
 
-export default ExecutiveOverview;
+export default ExecutiveIntelligence;
