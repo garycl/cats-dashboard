@@ -13,18 +13,11 @@ import {
   CircularProgress,
 } from '@mui/material';
 import {
-  TrendingUp,
   Flight,
-  AttachMoney,
-  BusinessCenter,
-  Assessment,
-  Compare,
-  Dashboard,
   ArrowForward,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useData } from '../context/DataContext';
-import { formatCurrency, formatNumber } from '../utils/formatters';
 
 // Lazy load the simple coverage map component
 const CoverageMap = React.lazy(() => import('../components/Maps/CoverageMap'));
@@ -53,55 +46,8 @@ const MapLoader: React.FC = () => (
 const Home: React.FC = () => {
   const theme = useTheme();
   const navigate = useNavigate();
-  const { data, loading, loadingProgress, getLatestYear, filteredData } = useData();
+  const { loading, loadingProgress, filteredData } = useData();
 
-
-  const currentData = filteredData.filter(d => d.fiscalYear === getLatestYear());
-
-  const industryMetrics = React.useMemo(() => {
-    if (currentData.length === 0) return null;
-
-    const totalRevenue = currentData.reduce((sum, d) => sum + (d.totalOperatingRevenue || 0), 0);
-    const totalPassengers = currentData.reduce((sum, d) => sum + (d.enplanements || 0), 0);
-    const totalAirports = currentData.length;
-    const avgMargin = currentData.reduce((sum, d) => sum + (d.operatingMargin || 0), 0) / currentData.length;
-    const totalOperations = currentData.reduce((sum, d) => sum + (d.annualAircraftOperations || 0), 0);
-
-    return {
-      totalRevenue,
-      totalPassengers,
-      totalAirports,
-      avgMargin,
-      totalOperations,
-    };
-  }, [currentData]);
-
-  const navigationCards = [
-    {
-      title: 'Executive Intelligence',
-      description: 'Comprehensive analysis with strategic insights and performance indicators',
-      icon: <Dashboard />,
-      path: '/executive-intelligence',
-      color: theme.palette.primary.main,
-      stats: 'Strategic Dashboard',
-    },
-    {
-      title: 'Benchmarking',
-      description: 'Side-by-side analysis and benchmarking tools',
-      icon: <Compare />,
-      path: '/benchmarking',
-      color: theme.palette.secondary.main,
-      stats: 'Peer Analysis',
-    },
-    {
-      title: 'Trend Tracking',
-      description: 'Multi-year trend analysis and historical performance tracking',
-      icon: <TrendingUp />,
-      path: '/trend-tracking',
-      color: theme.palette.success.main,
-      stats: 'Trend Analysis',
-    },
-  ];
 
   if (loading) {
     return (
@@ -227,160 +173,49 @@ const Home: React.FC = () => {
       </Box>
 
       <Container maxWidth="lg" sx={{ py: 6 }}>
-        {/* Industry Snapshot */}
-        {industryMetrics && (
-          <Box sx={{ mb: 6 }}>
-            <Typography variant="h4" sx={{ fontWeight: 600, mb: 4, textAlign: 'center' }}>
-              Industry Snapshot
-            </Typography>
-
-            <Grid container spacing={3}>
-              <Grid item xs={12} sm={6} md={2.4}>
-                <Card sx={{ textAlign: 'center', py: 3 }}>
-                  <CardContent>
-                    <AttachMoney sx={{ fontSize: 40, color: theme.palette.primary.main, mb: 1 }} />
-                    <Typography variant="h5" sx={{ fontWeight: 600, mb: 1 }}>
-                      {formatCurrency(industryMetrics.totalRevenue)}
-                    </Typography>
-                    <Typography variant="body2" color="textSecondary">
-                      Total Revenue
-                    </Typography>
-                    <Chip
-                      label="Operating Revenue"
-                      size="small"
-                      sx={{ mt: 1, backgroundColor: theme.palette.primary.light, color: 'white' }}
-                    />
-                  </CardContent>
-                </Card>
-              </Grid>
-
-              <Grid item xs={12} sm={6} md={2.4}>
-                <Card sx={{ textAlign: 'center', py: 3 }}>
-                  <CardContent>
-                    <Flight sx={{ fontSize: 40, color: theme.palette.secondary.main, mb: 1 }} />
-                    <Typography variant="h5" sx={{ fontWeight: 600, mb: 1 }}>
-                      {formatNumber(industryMetrics.totalPassengers)}
-                    </Typography>
-                    <Typography variant="body2" color="textSecondary">
-                      Passengers
-                    </Typography>
-                    <Chip
-                      label="Enplanements"
-                      size="small"
-                      sx={{ mt: 1, backgroundColor: theme.palette.secondary.light, color: 'white' }}
-                    />
-                  </CardContent>
-                </Card>
-              </Grid>
-
-              <Grid item xs={12} sm={6} md={2.4}>
-                <Card sx={{ textAlign: 'center', py: 3 }}>
-                  <CardContent>
-                    <BusinessCenter sx={{ fontSize: 40, color: theme.palette.success.main, mb: 1 }} />
-                    <Typography variant="h5" sx={{ fontWeight: 600, mb: 1 }}>
-                      {industryMetrics.totalAirports}
-                    </Typography>
-                    <Typography variant="body2" color="textSecondary">
-                      Airports
-                    </Typography>
-                    <Chip
-                      label="Reporting"
-                      size="small"
-                      sx={{ mt: 1, backgroundColor: theme.palette.success.main, color: 'white' }}
-                    />
-                  </CardContent>
-                </Card>
-              </Grid>
-
-              <Grid item xs={12} sm={6} md={2.4}>
-                <Card sx={{ textAlign: 'center', py: 3 }}>
-                  <CardContent>
-                    <TrendingUp sx={{ fontSize: 40, color: theme.palette.info.main, mb: 1 }} />
-                    <Typography variant="h5" sx={{ fontWeight: 600, mb: 1 }}>
-                      {industryMetrics.avgMargin.toFixed(1)}%
-                    </Typography>
-                    <Typography variant="body2" color="textSecondary">
-                      Avg Margin
-                    </Typography>
-                    <Chip
-                      label="Operating"
-                      size="small"
-                      sx={{ mt: 1, backgroundColor: theme.palette.info.main, color: 'white' }}
-                    />
-                  </CardContent>
-                </Card>
-              </Grid>
-
-              <Grid item xs={12} sm={6} md={2.4}>
-                <Card sx={{ textAlign: 'center', py: 3 }}>
-                  <CardContent>
-                    <Assessment sx={{ fontSize: 40, color: theme.palette.warning.main, mb: 1 }} />
-                    <Typography variant="h5" sx={{ fontWeight: 600, mb: 1 }}>
-                      {formatNumber(industryMetrics.totalOperations)}
-                    </Typography>
-                    <Typography variant="body2" color="textSecondary">
-                      Operations
-                    </Typography>
-                    <Chip
-                      label="Aircraft"
-                      size="small"
-                      sx={{ mt: 1, backgroundColor: theme.palette.warning.main, color: 'white' }}
-                    />
-                  </CardContent>
-                </Card>
-              </Grid>
-            </Grid>
-          </Box>
-        )}
-
-        {/* Airport Coverage Map */}
+        {/* Airport Coverage and Data Overview */}
         <Box sx={{ mb: 6 }}>
           <Typography variant="h4" sx={{ fontWeight: 600, mb: 4, textAlign: 'center' }}>
-            Airport Coverage Nationwide
+            Comprehensive Airport Coverage
           </Typography>
-          <Typography variant="body1" color="textSecondary" sx={{ mb: 4, textAlign: 'center', maxWidth: 800, mx: 'auto' }}>
-            Overview of all airports included in our dataset across the United States.
-            Markers are sized by hub classification: Large Hubs, Medium Hubs, Small Hubs, and Non-Hub airports.
-          </Typography>
+
           <Box sx={{
             boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
             borderRadius: 3,
             overflow: 'hidden',
-            border: `1px solid ${theme.palette.divider}`
+            border: `1px solid ${theme.palette.divider}`,
+            mb: 4
           }}>
             <Suspense fallback={<MapLoader />}>
               <CoverageMap airports={filteredData} height={400} />
             </Suspense>
           </Box>
-        </Box>
 
-        {/* Data Coverage */}
-        <Box sx={{ textAlign: 'center', py: 4 }}>
-          <Typography variant="h5" sx={{ fontWeight: 600, mb: 2 }}>
-            Comprehensive Data Coverage
-          </Typography>
-          <Typography variant="body1" color="textSecondary" sx={{ mb: 3, maxWidth: 800, mx: 'auto' }}>
+          <Typography variant="body1" color="textSecondary" sx={{ mb: 4, textAlign: 'center', maxWidth: 800, mx: 'auto' }}>
             Our analytics platform processes FAA Form 127 data covering financial performance,
             operational metrics, and strategic indicators for airports across the United States.
+            Markers are sized by hub classification: Large Hubs, Medium Hubs, Small Hubs, and Non-Hub airports.
           </Typography>
 
-          <Grid container spacing={2} justifyContent="center">
-            <Grid item>
-              <Chip label="Financial Performance" variant="outlined" />
+          <Box sx={{ textAlign: 'center' }}>
+            <Grid container spacing={2} justifyContent="center">
+              <Grid item>
+                <Chip label="Financial Performance" variant="outlined" />
+              </Grid>
+              <Grid item>
+                <Chip label="Operational Metrics" variant="outlined" />
+              </Grid>
+              <Grid item>
+                <Chip label="Strategic KPIs" variant="outlined" />
+              </Grid>
+              <Grid item>
+                <Chip label="Peer Benchmarking" variant="outlined" />
+              </Grid>
+              <Grid item>
+                <Chip label="Trend Analysis" variant="outlined" />
+              </Grid>
             </Grid>
-            <Grid item>
-              <Chip label="Operational Metrics" variant="outlined" />
-            </Grid>
-            <Grid item>
-              <Chip label="Strategic KPIs" variant="outlined" />
-            </Grid>
-            <Grid item>
-              <Chip label="Peer Benchmarking" variant="outlined" />
-            </Grid>
-            <Grid item>
-              <Chip label="Trend Analysis" variant="outlined" />
-            </Grid>
-          </Grid>
+          </Box>
         </Box>
       </Container>
     </Box>

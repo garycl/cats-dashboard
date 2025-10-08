@@ -149,26 +149,29 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuClick }) => {
 
   // Calculate filtered airport count
   const { totalAirports, filteredAirportCount } = React.useMemo(() => {
-    // Filter to current year first
+    // Get the list of active airports (those with enplanements in last 3 years)
+    const allYears = Array.from(new Set(data.map(d => d.fiscalYear))).sort((a, b) => b - a);
+    const lastThreeYears = allYears.slice(0, 3);
+    const activeAirports = new Set(
+      data
+        .filter(d => lastThreeYears.includes(d.fiscalYear) && (d.enplanements || 0) > 0)
+        .map(d => d.locId)
+    );
+
+    // For "total", use active airports for current year only (no state/hub filters)
+    const totalActiveCurrentYear = data
+      .filter(d => d.fiscalYear === currentYear && activeAirports.has(d.locId));
+    const total = new Set(totalActiveCurrentYear.map(d => d.locId)).size;
+
+    // filteredData already has all navbar filters applied (year, state, hub size, enplanements)
     const currentYearData = filteredData.filter(d => d.fiscalYear === currentYear);
-    const total = new Set(currentYearData.map(d => d.locId)).size;
+    const uniqueFiltered = new Set(currentYearData.map(d => d.locId)).size;
 
-    let filtered = currentYearData;
-
-    // Apply hub size filter
-    if (selectedHubSizes.length > 0) {
-      filtered = filtered.filter(d => selectedHubSizes.includes(d.hubSize));
-    }
-
-    // Apply airport filter
-    if (selectedAirport) {
-      filtered = filtered.filter(d => d.locId === selectedAirport);
-    }
-
-    const count = new Set(filtered.map(d => d.locId)).size;
+    // If a specific airport is selected, count should be 1
+    const count = selectedAirport ? 1 : uniqueFiltered;
 
     return { totalAirports: total, filteredAirportCount: count };
-  }, [filteredData, selectedHubSizes, selectedAirport, currentYear]);
+  }, [filteredData, data, selectedAirport, currentYear]);
 
   return (
     <AppBar

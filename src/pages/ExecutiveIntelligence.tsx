@@ -22,6 +22,7 @@ import {
   Tab,
   FormControlLabel,
   Switch,
+  Tooltip as MuiTooltip,
 } from '@mui/material';
 import {
   TrendingUp,
@@ -91,7 +92,7 @@ const MapLoader: React.FC = () => (
 
 const ExecutiveIntelligence: React.FC = () => {
   const theme = useTheme();
-  const { data, loading, filteredData, selectedYears, setSelectedYears, getAvailableYears, selectedHubSizes, selectedAirport } = useData();
+  const { data, loading, filteredData, selectedYears, setSelectedYears, getAvailableYears, selectedHubSizes, selectedStates, selectedAirport } = useData();
 
   const [selectedMetric, setSelectedMetric] = React.useState<string>('enplanements');
   const [selectedTab, setSelectedTab] = React.useState<number>(0);
@@ -124,10 +125,6 @@ const ExecutiveIntelligence: React.FC = () => {
     }
   };
 
-  // Convert global hub sizes filter to local 'All' format for backward compatibility
-  const selectedHubSize = selectedHubSizes.length === 0 ? 'All' :
-                          selectedHubSizes.length === 1 ? selectedHubSizes[0] : 'All';
-
   const availableYears = getAvailableYears();
   const currentYear = selectedYears.length > 0 ? selectedYears[0] : Math.max(...availableYears);
 
@@ -152,67 +149,28 @@ const ExecutiveIntelligence: React.FC = () => {
   const currentYearIndex = sortedYears.indexOf(currentYear);
   const previousYear = currentYearIndex < sortedYears.length - 1 ? sortedYears[currentYearIndex + 1] : currentYear - 1;
 
-  // Filter data based on hub size selection
-  const hubFilteredData = React.useMemo(() => {
-    if (selectedHubSize === 'All') {
-      return filteredData;
-    }
-    return filteredData.filter(d => d.hubSize === selectedHubSize);
-  }, [filteredData, selectedHubSize]);
+  // hubFilteredData is the same as filteredData since filteredData already respects navbar hub size filter
+  const hubFilteredData = filteredData;
 
-
-  // Executive Summary Logic (from ExecutiveDashboard)
-  const executiveSummary = React.useMemo(() => {
-    if (filteredData.length === 0) return null;
-
-    const currentData = filteredData.filter(d => d.fiscalYear === currentYear);
-    const previousData = data.filter(d => d.fiscalYear === previousYear);
-
-    const totalRevenue = currentData.reduce((sum, d) => sum + (d.totalOperatingRevenue || 0), 0);
-    const totalExpenses = currentData.reduce((sum, d) => sum + (d.totalOperatingExpenses || 0), 0);
-    const totalPassengers = currentData.reduce((sum, d) => sum + (d.enplanements || 0), 0);
-    const totalDebt = currentData.reduce((sum, d) => sum + (d.totalDebt || 0), 0);
-    const totalCash = currentData.reduce((sum, d) => sum + (d.unrestrictedCashAndInvestments || 0), 0);
-
-    const prevTotalRevenue = previousData.reduce((sum, d) => sum + (d.totalOperatingRevenue || 0), 0);
-    const prevTotalPassengers = previousData.reduce((sum, d) => sum + (d.enplanements || 0), 0);
-
-    const revenueGrowth = prevTotalRevenue ? (totalRevenue - prevTotalRevenue) / prevTotalRevenue : 0;
-    const passengerGrowth = prevTotalPassengers ? (totalPassengers - prevTotalPassengers) / prevTotalPassengers : 0;
-
-    const avgMargin = (totalRevenue - totalExpenses) / totalRevenue;
-    const cashToDebtRatio = totalDebt ? totalCash / totalDebt : 0;
-
-    const profitableAirports = currentData.filter(d => (d.operatingMargin || 0) > 0).length;
-    const totalAirports = currentData.length;
-
-    return {
-      totalRevenue,
-      totalExpenses,
-      totalPassengers,
-      totalDebt,
-      totalCash,
-      revenueGrowth,
-      passengerGrowth,
-      avgMargin,
-      cashToDebtRatio,
-      profitableAirports,
-      totalAirports,
-      netIncome: totalRevenue - totalExpenses,
-    };
-  }, [filteredData, currentYear, previousYear, selectedYears, data]);
-
-  // Industry KPIs Logic (from Overview)
+  // Industry KPIs Logic
   const industryKPIs = React.useMemo(() => {
     if (filteredData.length === 0) return null;
 
-    // Filter by hub size first, then by year (don't use hubFilteredData as it's already filtered by selectedYears)
-    const hubSizeFilteredData = selectedHubSize === 'All' ? filteredData : filteredData.filter(d => d.hubSize === selectedHubSize);
+    // filteredData already respects all navbar filters (years, states, hub sizes)
+    const currentData = filteredData.filter(d => d.fiscalYear === currentYear);
 
-    const currentData = hubSizeFilteredData.filter(d => d.fiscalYear === currentYear);
-    // Use raw data for previous year, then apply hub size filter
-    const previousDataRaw = data.filter(d => d.fiscalYear === previousYear);
-    const previousData = selectedHubSize === 'All' ? previousDataRaw : previousDataRaw.filter(d => d.hubSize === selectedHubSize);
+    // For previous year, get raw data then apply the same filters as filteredData (except year)
+    let previousData = data.filter(d => d.fiscalYear === previousYear);
+
+    // Apply state filter if active
+    if (selectedStates.length > 0) {
+      previousData = previousData.filter(d => selectedStates.includes(d.state));
+    }
+
+    // Apply hub size filter if active
+    if (selectedHubSizes.length > 0) {
+      previousData = previousData.filter(d => selectedHubSizes.includes(d.hubSize));
+    }
 
 
     const currentRevenue = currentData.reduce((sum, d) => sum + (d.totalOperatingRevenue || 0), 0);
@@ -224,6 +182,7 @@ const ExecutiveIntelligence: React.FC = () => {
     const currentOperations = currentData.reduce((sum, d) => sum + (d.annualAircraftOperations || 0), 0);
     const previousOperations = previousData.reduce((sum, d) => sum + (d.annualAircraftOperations || 0), 0);
 
+    // Calculate average operating margin (simple average of individual airport margins)
     const currentMargin = currentData.reduce((sum, d) => sum + (d.operatingMargin || 0), 0) / currentData.length;
     const previousMargin = previousData.reduce((sum, d) => sum + (d.operatingMargin || 0), 0) / previousData.length;
 
@@ -253,7 +212,7 @@ const ExecutiveIntelligence: React.FC = () => {
       },
       airports: currentData.length,
     };
-  }, [filteredData, selectedHubSize, currentYear, previousYear, selectedYears, data]);
+  }, [filteredData, currentYear, previousYear, selectedYears, selectedStates, selectedHubSizes, data]);
 
   // Determine if the metric is a "cost" measure (lower is better)
   const isCostMetric = (metric: string): boolean => {
@@ -272,14 +231,21 @@ const ExecutiveIntelligence: React.FC = () => {
       const latestYear = Math.max(...data.map(a => a.fiscalYear));
       const previousYear = latestYear - 1;
 
-      // Get current year data from hubFilteredData (already filtered by hub size and enplanements > 0)
+      // Get current year data from hubFilteredData (already filtered by navbar filters)
       const currentYearData = hubFilteredData.filter(d => d.fiscalYear === latestYear);
 
-      // Get previous year data from raw data, then apply hub size filter
-      const previousYearDataRaw = data.filter(d => d.fiscalYear === previousYear);
-      const previousYearData = selectedHubSize === 'All'
-        ? previousYearDataRaw
-        : previousYearDataRaw.filter(d => d.hubSize === selectedHubSize);
+      // Get previous year data from raw data, then apply the same filters as hubFilteredData (except year)
+      let previousYearData = data.filter(d => d.fiscalYear === previousYear);
+
+      // Apply state filter if active
+      if (selectedStates.length > 0) {
+        previousYearData = previousYearData.filter(d => selectedStates.includes(d.state));
+      }
+
+      // Apply hub size filter if active
+      if (selectedHubSizes.length > 0) {
+        previousYearData = previousYearData.filter(d => selectedHubSizes.includes(d.hubSize));
+      }
 
       const airportsWithGrowth = currentYearData
         .map(current => {
@@ -345,7 +311,7 @@ const ExecutiveIntelligence: React.FC = () => {
 
       return [...top5, ...bottom5];
     }
-  }, [hubFilteredData, selectedMetric, selectedYears, showGrowthRate, currentYear, previousYear, data, selectedHubSize, calculateDerivedMetric]);
+  }, [hubFilteredData, selectedMetric, selectedYears, showGrowthRate, currentYear, previousYear, data, selectedStates, selectedHubSizes]);
 
   // Interactive Risk Assessment Logic
   const riskFactors = React.useMemo(() => {
@@ -446,7 +412,7 @@ const ExecutiveIntelligence: React.FC = () => {
       growth: industryKPIs?.profitable.growth || 0,
       icon: <Business />,
       color: theme.palette.warning.main,
-      formatter: formatNumber,
+      formatter: (value: number) => Math.round(value).toLocaleString('en-US'),
     },
   ];
 
@@ -644,29 +610,43 @@ const ExecutiveIntelligence: React.FC = () => {
                   </Select>
                 </FormControl>
 
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={showGrowthRate}
-                      onChange={(e) => setShowGrowthRate(e.target.checked)}
-                      size="small"
-                      sx={{
-                        '& .MuiSwitch-switchBase.Mui-checked': {
-                          color: theme.palette.primary.main,
-                        },
-                        '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                          backgroundColor: theme.palette.primary.main,
-                        },
-                      }}
-                    />
+                <MuiTooltip
+                  title={
+                    selectedMetric === 'operatingMargin' && showGrowthRate
+                      ? "Growth rate filters: Excludes airports with previous margin <1% to avoid misleading extreme values. Also excludes growth rates >500%."
+                      : "Toggle to view year-over-year growth rates"
                   }
-                  label={
-                    <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary' }}>
-                      Growth Rate
-                    </Typography>
-                  }
-                  sx={{ margin: 0 }}
-                />
+                  arrow
+                >
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={showGrowthRate}
+                        onChange={(e) => setShowGrowthRate(e.target.checked)}
+                        size="small"
+                        sx={{
+                          '& .MuiSwitch-switchBase.Mui-checked': {
+                            color: theme.palette.primary.main,
+                          },
+                          '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                            backgroundColor: theme.palette.primary.main,
+                          },
+                        }}
+                      />
+                    }
+                    label={
+                      <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary' }}>
+                        Growth Rate
+                        {selectedMetric === 'operatingMargin' && showGrowthRate && (
+                          <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 0.5 }}>
+                            *
+                          </Typography>
+                        )}
+                      </Typography>
+                    }
+                    sx={{ margin: 0 }}
+                  />
+                </MuiTooltip>
               </Box>
 
             <Box sx={{
@@ -734,29 +714,43 @@ const ExecutiveIntelligence: React.FC = () => {
                   </Select>
                 </FormControl>
 
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={showGrowthRate}
-                      onChange={(e) => setShowGrowthRate(e.target.checked)}
-                      size="small"
-                      sx={{
-                        '& .MuiSwitch-switchBase.Mui-checked': {
-                          color: theme.palette.primary.main,
-                        },
-                        '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                          backgroundColor: theme.palette.primary.main,
-                        },
-                      }}
-                    />
+                <MuiTooltip
+                  title={
+                    selectedMetric === 'operatingMargin' && showGrowthRate
+                      ? "Growth rate filters: Excludes airports with previous margin <1% to avoid misleading extreme values. Also excludes growth rates >500%."
+                      : "Toggle to view year-over-year growth rates"
                   }
-                  label={
-                    <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary' }}>
-                      Growth Rate
-                    </Typography>
-                  }
-                  sx={{ margin: 0 }}
-                />
+                  arrow
+                >
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={showGrowthRate}
+                        onChange={(e) => setShowGrowthRate(e.target.checked)}
+                        size="small"
+                        sx={{
+                          '& .MuiSwitch-switchBase.Mui-checked': {
+                            color: theme.palette.primary.main,
+                          },
+                          '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                            backgroundColor: theme.palette.primary.main,
+                          },
+                        }}
+                      />
+                    }
+                    label={
+                      <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary' }}>
+                        Growth Rate
+                        {selectedMetric === 'operatingMargin' && showGrowthRate && (
+                          <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 0.5 }}>
+                            *
+                          </Typography>
+                        )}
+                      </Typography>
+                    }
+                    sx={{ margin: 0 }}
+                  />
+                </MuiTooltip>
               </Box>
 
             {/* Performance Rankings Cards */}

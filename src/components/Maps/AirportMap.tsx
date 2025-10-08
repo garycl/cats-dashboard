@@ -222,10 +222,21 @@ const AirportMap: React.FC<AirportMapProps> = ({ airports, allAirports, height =
             const currentValue = getMetricValue(current, option.value);
             const previousValue = getMetricValue(previous, option.value);
 
-            if (previousValue <= 0 || currentValue < 0) return null;
+            // Skip if previous value is zero (division by zero)
+            if (previousValue === 0) return null;
+
+            // For percentage metrics (like operating margin), skip if base is too small
+            // This prevents misleading extreme growth rates (e.g., 0.01% to 0.1% = 900% growth)
+            if (option.value === 'operatingMargin' && Math.abs(previousValue) < 0.01) {
+              return null;
+            }
 
             const growthRate = ((currentValue - previousValue) / previousValue) * 100;
-            return Number.isFinite(growthRate) ? growthRate : null;
+
+            // Filter extreme outliers (>500% growth) - likely data errors or meaningless small-base calculations
+            if (!Number.isFinite(growthRate) || Math.abs(growthRate) > 500) return null;
+
+            return growthRate;
           })
           .filter(rate => rate !== null);
 
